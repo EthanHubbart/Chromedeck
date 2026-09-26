@@ -8,21 +8,30 @@ The owner has no coding or UI design background. Explain decisions briefly in pl
 
 - **Installable web app (PWA)**, hosted on GitHub Pages and added to the iPhone home screen. It must work offline and on a PC browser. Home-screen install matters on iPhone because Safari can clear website storage after 7 days without a visit; installed apps are exempt from that.
 - **No build step.** Plain HTML, CSS and native ES modules (`<script type="module">`), so editing a file and pushing is the whole deploy. No npm, bundler or framework unless the owner agrees. Only the Google Fonts `Rajdhani` stylesheet loads from outside, plus wiki images (see below).
-- **Serve it, don't double-click it.** ES modules don't load from `file://`. Run it locally with `python3 -m http.server` in the repo root.
+- **Serve it, don't double-click it.** ES modules don't load from `file://`. Run it locally with `python3 -m http.server` in the repo root, then open `http://localhost:8000`.
 - **No save-file sync.** The game runs on GeForce Now (no local files) and sometimes on a Steam Deck. Cyberpunk's save format is proprietary and changes with patches, so progress is tracked by hand in the app. Don't build save parsing unless the owner asks again.
 
-## Target layout (migration from `chromedeck.html` in progress)
+## Layout
 
 ```
-index.html            app shell: header, views, bottom nav, sheet, toast
+index.html            app shell: header, sub-tabs, views, bottom nav, sheet, toast
 manifest.webmanifest  PWA install metadata and icons
-sw.js                 service worker: offline cache (bump its cache version on every release)
-css/                  tokens.css (colors, type), app.css (components)
-js/                   app.js (boot, routing), store.js (state and storage), one file per module view
-data/                 one ES module per data set, each exporting a plain object or array
+sw.js                 service worker: offline cache (bump CACHE and list new files on every release)
+css/                  tokens.css (colors, shape), app.css (components)
+js/app.js             boot, navigation (TABS), header, event routing, update banner; APP_VERSION
+js/store.js           state `S`, game data `DATA`, storage, data-edit diffs, load/migrate/normalize, validateData
+js/rules.js           perk gates and budgets, capacity math
+js/ui.js              $, esc, toast, the shared sheet, download/readFile, icons
+js/views/*.js         one module per screen: export a render function plus optional click/input/change handlers that return true when handled
+data/index.js         assembles SEED from core.js, perks.js, cyberware.js; holds the data `version`
+data/examples.js      starter builds, used only when there are no saved builds
+icons/                icon.svg (source) and rendered PNGs
+chromedeck.html       the original single-file planner, kept so old saves can be exported from it; not part of the app
 ```
 
-`chromedeck.html` is the original single-file planner (cyberware, perks, capacity, builds, shards). Until the migration is done it's the reference implementation. Port its logic and data, don't rewrite them from scratch.
+Navigation: five bottom tabs (Character, Journal, Collection, Wardrobe, System). Character has sub-tabs (Cyberware, Perks, Capacity, Builds). New modules replace the placeholders in `js/views/soon.js`. Only the visible view renders; `renderAll()` redraws nav, header and the current view.
+
+Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, and add new files to `APP_FILES`. Installed copies show an "Update" banner when a new version is live.
 
 ## Data rules (the most important part)
 
@@ -48,7 +57,8 @@ data/                 one ES module per data set, each exporting a plain object 
 - Mutations autosave. Keep export/import of a full JSON backup, because storage on iPhone can still be lost.
 - Per-build data (attributes, perks, equipped cyberware, outfit) lives on the build. Per-playthrough progress (shards, missions, missables, vehicles, collected clothing) lives under `playthrough`.
 - New fields get defaults in normalization, which runs after load, import and data edits. For shape changes, write a one-time migration (see `migrateFlags()` in `chromedeck.html`). Don't change the storage key.
-- User edits to game data are stored as **diffs over the shipped data**, not full copies. That way a data update still reaches users who edited something. (The old single file stored full copies, and the migration must convert them.)
+- User edits to game data are stored in `S.dataEdits` as **diffs over SEED** (`{key:{set:{id:entry},del:[ids]}}` for id'd lists, `{key:{replace:value}}` otherwise), so data updates still reach users for everything they didn't edit. Old v1 saves with a full `dataOverride` are converted on load. If edits stop validating against new data, they're set aside (`S.dataEditsSetAside`) and the user is told.
+- UI position (current tab and sub-tab) is kept in `S.ui`.
 
 ## UI conventions
 
@@ -59,7 +69,7 @@ data/                 one ES module per data set, each exporting a plain object 
 
 ## Roadmap
 
-1. **Foundation:** multi-file PWA, hosting, design system, and a port of the existing planner (capacity, cyberware, perks, builds, shards) with the data moved to `data/`.
+1. **Foundation (done):** multi-file PWA, design system, and a port of the existing planner (capacity, cyberware, perks, builds, shards) with the data moved to `data/`. Hosting is still pending: GitHub Pages needs the repo to be public.
 2. **Missions and missables:** every Main Job, Side Job and Gig (base game and Phantom Liberty), with:
    - a recommended order for story flow and missable safety, which updates as missions are checked off,
    - manual reordering that warns about risks,
@@ -71,7 +81,7 @@ data/                 one ES module per data set, each exporting a plain object 
 
 ## Checking changes
 
-There's no test suite. Serve the app locally and use headless Chromium with Playwright (available in cloud sessions; don't run `playwright install`). Check:
+There's no test suite. Serve the app locally and use headless Chromium with Playwright (available in cloud sessions; don't run `playwright install`; load it with `NODE_PATH=$(npm root -g)` from a `.cjs` script). In cloud sessions Google Fonts is blocked for the browser, so screenshots use a wider fallback font; download the font with curl and serve it through `context.route` if the look matters. Check:
 - no console errors on load,
 - every tab opens,
 - state survives a reload,
