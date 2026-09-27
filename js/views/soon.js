@@ -5,6 +5,11 @@
 import { $, esc } from "../ui.js";
 
 const PLANS = {
+  weapons: {
+    title: "Weapons", next: "Planned",
+    lead: "Every weapon, with iconics flagged so you can check them off as you find them.",
+    items: ["Stats and effects as the game shows them", "Iconic weapons: where and how to get each one, and whether it's missable", "Track which iconics you own", "Filter by type, class and Tech / Power / Smart"]
+  },
   journal: {
     title: "Journal", next: "Next up",
     lead: "Every Main Job, Side Job and Gig, in a recommended order that keeps story flow and protects missable content.",
@@ -13,7 +18,7 @@ const PLANS = {
   collection: {
     title: "Collection", next: "Planned",
     lead: "Everything collectible, with where and how to get it.",
-    items: ["Unique vehicles and how to unlock them", "Iconic weapons and where to find them", "Tarot graffiti, Cyberpsycho Sightings, Phantom Liberty airdrops", "Apartments, romances and endings", "A completion dashboard across all of it"]
+    items: ["Unique vehicles and how to unlock them", "Tarot graffiti, Cyberpsycho Sightings, Phantom Liberty airdrops", "Apartments, romances and endings", "A completion dashboard across everything, iconic weapons included"]
   },
   wardrobe: {
     title: "Wardrobe", next: "Planned",

@@ -29,7 +29,7 @@ icons/                icon.svg (source) and rendered PNGs
 chromedeck.html       the original single-file planner, kept so old saves can be exported from it; not part of the app
 ```
 
-Navigation: five bottom tabs (Character, Journal, Collection, Wardrobe, System). Character has sub-tabs (Cyberware, Perks, Capacity, Builds). New modules replace the placeholders in `js/views/soon.js`. Only the visible view renders; `renderAll()` redraws nav, header and the current view.
+Navigation (chosen by the owner, left to right): **Character** (sub-tabs Cyberware, Perks, Capacity, Builds), **Gear** (sub-tabs Weapons, Wardrobe), **Collection**, **Journal**, **System**. Character-specific screens stay toward the left. Tabs with sub-tabs remember the last one per tab in `S.ui.subs`. The tab list lives in `TABS` in `js/app.js` and `UI_TABS` in `js/store.js`; keep them in sync. New modules replace the placeholders in `js/views/soon.js`. Only the visible view renders; `renderAll()` redraws nav, header and the current view.
 
 Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, and add new files to `APP_FILES`. Installed copies show an "Update" banner when a new version is live.
 
@@ -58,14 +58,14 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
 - Per-build data (attributes, perks, equipped cyberware, outfit) lives on the build. Per-playthrough progress (shards, missions, missables, vehicles, collected clothing) lives under `playthrough`.
 - New fields get defaults in normalization, which runs after load, import and data edits. For shape changes, write a one-time migration (see `migrateFlags()` in `chromedeck.html`). Don't change the storage key.
 - User edits to game data are stored in `S.dataEdits` as **diffs over SEED** (`{key:{set:{id:entry},del:[ids]}}` for id'd lists, `{key:{replace:value}}` otherwise), so data updates still reach users for everything they didn't edit. Old v1 saves with a full `dataOverride` are converted on load. If edits stop validating against new data, they're set aside (`S.dataEditsSetAside`) and the user is told.
-- UI position (current tab and sub-tab) is kept in `S.ui`.
+- UI position is kept in `S.ui` (`tab`, and `subs` per tab). v0.3.0 saves with a single `sub` or the old Wardrobe tab are migrated in `normalize()`.
 
 ## UI conventions
 
 - Mobile first: design at ~390px wide, bottom navigation, and tap targets of at least 44px. It should also look right on a PC.
 - Game-styled look: dark UI, cyan and yellow accents, chamfered panels, the Rajdhani font, rarity colors. Never convey tier, rarity or status by color alone; pair color with text or shape.
 - Render with template literals and escape all data and user text (`esc()`). Use delegated event listeners, and one shared bottom sheet for popups.
-- There will be more modules than fit in a bottom bar. Use a few top-level tabs that group modules; ask the owner before settling the navigation.
+- Keep the bottom bar at five tabs so labels stay readable on a phone; add new modules as sub-tabs. Ask the owner before changing the navigation.
 
 ## Roadmap
 
@@ -75,9 +75,9 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
    - manual reordering that warns about risks,
    - the unique items tied to each mission,
    - points of no return, in plain words.
-3. **Vehicles and weapons:** unique vehicles and how to unlock them; iconic weapons and where to get them.
-4. **Wardrobe:** full clothing list with slot, stats and location (exact where static), plus an outfit builder on the V silhouette.
-5. **Other trackers:** capacity sources (already started), Tarot graffiti, Cyberpsycho Sightings, Phantom Liberty airdrops, apartments, romances and endings, achievements, and a completion dashboard.
+3. **Weapons and vehicles:** Gear › Weapons lists every weapon, with iconics flagged and trackable there (where to get them, whether missable). Unique vehicles and how to unlock them go in Collection.
+4. **Wardrobe (Gear › Wardrobe):** full clothing list with slot, stats and location (exact where static), plus an outfit builder on the V silhouette.
+5. **Collection:** vehicles, Tarot graffiti, Cyberpsycho Sightings, Phantom Liberty airdrops, apartments, romances and endings, achievements, and a completion dashboard (which also counts iconic weapons from Gear).
 
 ## Checking changes
 

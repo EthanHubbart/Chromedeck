@@ -49,7 +49,7 @@ const P = {
   character: '<path d="M12 3l7 4v10l-7 4-7-4V7z"/><circle cx="12" cy="10" r="2.6"/><path d="M8.2 16.2c.9-1.9 2.2-2.8 3.8-2.8s2.9.9 3.8 2.8"/>',
   journal: '<path d="M6 3h10l3 3v15H6z"/><path d="M9 9h7M9 13h7M9 17h4"/>',
   collection: '<path d="M4 7l8-4 8 4-8 4z"/><path d="M4 12l8 4 8-4"/><path d="M4 17l8 4 8-4"/>',
-  wardrobe: '<path d="M9 3l3 2 3-2 5 3-2 5h-2v10H8V11H6L4 6z"/>',
+  gear: '<path d="M3 7h16l2 2v3h-9l-1.5 1.5L9 20H5l1.5-8H3z"/><path d="M12 12v2.5h-2.2"/><path d="M19 7V5.5"/>',
   system: '<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>'
 };
 export const icon = (name, size = 22) => `<svg viewBox="0 0 24 24" width="${size}" height="${size}" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" stroke-linecap="round" aria-hidden="true">${P[name] || ""}</svg>`;
