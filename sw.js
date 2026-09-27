@@ -1,0 +1,44 @@
+/* Service worker: keeps Chromedeck working offline.
+   Bump CACHE on every release (match APP_VERSION in js/app.js) and add any new
+   file to APP_FILES, or installed copies keep serving the old version. */
+const CACHE = "chromedeck-0.3.0";
+const FONTS = "chromedeck-fonts";
+const IMAGES = "chromedeck-images";   // wiki images, cached as they're viewed
+const APP_FILES = [
+  "./", "index.html", "manifest.webmanifest",
+  "css/tokens.css", "css/app.css",
+  "js/app.js", "js/store.js", "js/rules.js", "js/ui.js",
+  "js/views/cyberware.js", "js/views/perks.js", "js/views/capacity.js", "js/views/builds.js", "js/views/system.js", "js/views/soon.js",
+  "data/index.js", "data/core.js", "data/perks.js", "data/cyberware.js", "data/examples.js",
+  "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"
+];
+
+self.addEventListener("install", e => {
+  e.waitUntil(caches.open(CACHE).then(c => c.addAll(APP_FILES.map(u => new Request(u, { cache: "reload" })))));
+});
+self.addEventListener("message", e => { if (e.data === "skipWaiting") self.skipWaiting(); });
+self.addEventListener("activate", e => {
+  e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k.startsWith("chromedeck-") && ![CACHE, FONTS, IMAGES].includes(k)).map(k => caches.delete(k)))).then(() => self.clients.claim()));
+});
+
+self.addEventListener("fetch", e => {
+  const req = e.request; if (req.method !== "GET") return;
+  const url = new URL(req.url);
+  if (url.origin === location.origin) {
+    // app files: cache first, so it opens instantly and offline
+    e.respondWith(caches.match(req, { ignoreSearch: true }).then(hit => hit || fetch(req).catch(() => req.mode === "navigate" ? caches.match("index.html") : Response.error())));
+  } else if (url.hostname.endsWith("fonts.googleapis.com") || url.hostname.endsWith("fonts.gstatic.com")) {
+    e.respondWith(staleWhileRevalidate(FONTS, req));
+  } else if (url.hostname.endsWith("nocookie.net")) {
+    e.respondWith(cacheFirst(IMAGES, req));
+  }
+});
+async function staleWhileRevalidate(name, req) {
+  const cache = await caches.open(name); const hit = await cache.match(req);
+  const net = fetch(req).then(r => { if (r.ok || r.type === "opaque") cache.put(req, r.clone()); return r; }).catch(() => hit || Response.error());
+  return hit || net;
+}
+async function cacheFirst(name, req) {
+  const cache = await caches.open(name); const hit = await cache.match(req); if (hit) return hit;
+  const r = await fetch(req); if (r.ok || r.type === "opaque") cache.put(req, r.clone()); return r;
+}

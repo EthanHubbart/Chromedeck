@@ -1,0 +1,11 @@
+/* Design tokens — colors, rarity, shape. Dark-only, matching the game's UI. */
+:root{
+  --bg:#04070a; --panel:#0a1116; --panel2:#0f181f; --line:#1c3139; --line2:#2b4a55;
+  --cyan:#5be7f2; --cyan-dim:#2a7f89; --yellow:#f5e60d; --red:#ff3d5e; --green:#7ee08a;
+  --text:#d9e5e7; --muted:#7f959b; --faint:#56696f;
+  --r-common:#c9d3d6; --r-uncommon:#79d65f; --r-rare:#55a9ff; --r-epic:#c77dff; --r-legendary:#ff9d3b; --r-iconic:#ffd45e;
+  --chamfer:10px;
+  --safe-b: env(safe-area-inset-bottom, 0px);
+  --safe-t: env(safe-area-inset-top, 0px);
+  --nav-h: 64px;
+}
