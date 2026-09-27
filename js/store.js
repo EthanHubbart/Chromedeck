@@ -6,7 +6,8 @@
 import { SEED, EXAMPLE_BUILDS } from "../data/index.js";
 import { slotCount, cw } from "./rules.js";
 
-const KEY = "chromedeck.v1";          // never change: existing saves live here
+const KEY = "chromedeck.v1";
+const UI_TABS = ["character", "gear", "collection", "journal", "system"];   // must match TABS in app.js          // never change: existing saves live here
 const mem = {};
 export const store = {
   get() { try { const s = localStorage.getItem(KEY); return s ? JSON.parse(s) : null; } catch (e) { return mem.state || null; } },
@@ -142,7 +143,12 @@ export function normalize() {
   if (!S.playthrough) S.playthrough = { shards: {} };
   if (!S.playthrough.shards) S.playthrough.shards = {};
   if (!S.dataEdits) S.dataEdits = {};
-  if (!S.ui) S.ui = { tab: "character", sub: "cyberware" };
+  // UI position. v0.3.0 kept one `sub` (Character only) and had Wardrobe as its own tab.
+  if (!S.ui) S.ui = { tab: "character" };
+  if (!S.ui.subs) S.ui.subs = { character: S.ui.sub || "cyberware" };
+  delete S.ui.sub;
+  if (S.ui.tab === "wardrobe") { S.ui.tab = "gear"; S.ui.subs.gear = "wardrobe"; }
+  if (!UI_TABS.includes(S.ui.tab)) S.ui.tab = "character";
   if (!S.builds.length) { S.builds.push(newBuild("Build 1")); }
   const d = newBuild();
   S.builds.forEach(b => {

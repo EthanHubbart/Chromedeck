@@ -13,34 +13,40 @@ import * as builds from "./views/builds.js";
 import * as system from "./views/system.js";
 import { renderSoon } from "./views/soon.js";
 
-export const APP_VERSION = "0.3.0";   // keep in step with CACHE in sw.js
+export const APP_VERSION = "0.3.1";   // keep in step with CACHE in sw.js
 
 /* ---------- navigation ---------- */
+/* Bottom tabs, left to right. A tab with `subs` shows sub-tabs across the top
+   and remembers which one you were on (S.ui.subs). Also listed in UI_TABS in store.js. */
 const TABS = [
   { id: "character", label: "Character", subs: [["cyberware", "Cyberware"], ["perks", "Perks"], ["capacity", "Capacity"], ["builds", "Builds"]] },
-  { id: "journal", label: "Journal" },
+  { id: "gear", label: "Gear", subs: [["weapons", "Weapons"], ["wardrobe", "Wardrobe"]] },
   { id: "collection", label: "Collection" },
-  { id: "wardrobe", label: "Wardrobe" },
+  { id: "journal", label: "Journal" },
   { id: "system", label: "System" }
 ];
 const VIEWS = {
   cyberware: cyber.renderCyberware, perks: perks.renderPerks, capacity: capacity.renderCapacity, builds: builds.renderBuilds,
-  journal: () => renderSoon("journal"), collection: () => renderSoon("collection"), wardrobe: () => renderSoon("wardrobe"),
+  weapons: () => renderSoon("weapons"), wardrobe: () => renderSoon("wardrobe"),
+  collection: () => renderSoon("collection"), journal: () => renderSoon("journal"),
   system: system.renderSystem
 };
 const HANDLERS = [cyber, perks, capacity, builds, system];
 
-const viewId = () => S.ui.tab === "character" ? S.ui.sub : S.ui.tab;
+const curTab = () => TABS.find(t => t.id === S.ui.tab) || TABS[0];
+const curSub = () => { const t = curTab(); const s = S.ui.subs[t.id]; return t.subs.some(([id]) => id === s) ? s : t.subs[0][0]; };
+const viewId = () => curTab().subs ? curSub() : curTab().id;
 
 export function go(tab, sub) {
-  S.ui.tab = tab; if (sub) S.ui.sub = sub;
+  S.ui.tab = tab; if (sub) S.ui.subs[tab] = sub;
   closeSheet(); save(); renderAll(); window.scrollTo(0, 0);
 }
 
 function renderNav() {
   $("#tabs").innerHTML = TABS.map(t => `<button data-tab="${t.id}" class="${S.ui.tab === t.id ? "on" : ""}" aria-current="${S.ui.tab === t.id ? "page" : "false"}">${icon(t.id)}<span>${t.label}</span></button>`).join("");
-  const tab = TABS.find(t => t.id === S.ui.tab);
-  $("#subnav").innerHTML = tab.subs ? tab.subs.map(([id, l]) => `<button data-sub="${id}" class="${S.ui.sub === id ? "on" : ""}" aria-current="${S.ui.sub === id ? "page" : "false"}">${l}</button>`).join("") : "";
+  const tab = curTab(), sub = tab.subs && curSub();
+  $("#subnav").innerHTML = tab.subs ? tab.subs.map(([id, l]) => `<button data-sub="${id}" class="${sub === id ? "on" : ""}" aria-current="${sub === id ? "page" : "false"}">${l}</button>`).join("") : "";
+  $("#subnav").setAttribute("aria-label", tab.label + " sections");
   $("#subnav").hidden = !tab.subs;
   $$(".view").forEach(v => v.classList.toggle("on", v.id === "v-" + viewId()));
 }
@@ -88,7 +94,7 @@ document.addEventListener("click", e => {
   const t = e.target.closest("button,[data-perk],#scrim,a[data-tab]");
   if (!t || t.disabled) return;
   if (t.dataset.tab) { go(t.dataset.tab); return; }
-  if (t.dataset.sub) { go("character", t.dataset.sub); return; }
+  if (t.dataset.sub) { go(S.ui.tab, t.dataset.sub); return; }
   if (t.id === "sheetClose" || t.id === "scrim") { closeSheet(); return; }
   if (t.id === "hdrSave") { toast(save() ? "Saved" : "Saved for this session only — this browser blocks storage"); return; }
   dispatch("click", t, build());
