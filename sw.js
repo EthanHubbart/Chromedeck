@@ -1,7 +1,7 @@
 /* Service worker: keeps Chromedeck working offline.
    Bump CACHE on every release (match APP_VERSION in js/app.js) and add any new
    file to APP_FILES, or installed copies keep serving the old version. */
-const CACHE = "chromedeck-0.5.0";
+const CACHE = "chromedeck-0.5.1";
 const FONTS = "chromedeck-fonts";
 const IMAGES = "chromedeck-images";   // wiki images, cached as they're viewed
 const APP_FILES = [

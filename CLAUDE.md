@@ -83,6 +83,8 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
 - Side jobs with no wiki prerequisite get an estimated anchor in `anchorOf()` (Watson → The Rescue, rest of the city → Playing for Time, Phantom Liberty → Dog Eat Dog). It's labelled as an estimate, never auto-marked done, and never written into the data.
 - `ext` = requirements the app can't track yet (text). Missions with `ext` never show as available.
 - Lifepath-only side jobs use `branch:["lifepath", …]`.
+- Act 2's concurrent threads are drawn as lanes in `threadCard()` (js/views/journal.js): Evelyn → Voodoo Boys (paths evelyn + alt, one sequential lane), Hellman, Takemura. Cross-thread requirements are listed under the card. Story sections can interleave in the plan (Phantom Liberty opens mid-Act 2), so a resumed section gets a "(continued)" header.
+- System › "To check in game" lists every entry with `verified:false` plus `GENERAL_CHECKS` (rules not tied to one entry). When the owner answers one, fix the data and drop the flag.
 
 ## UI conventions
 

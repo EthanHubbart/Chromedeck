@@ -86,8 +86,8 @@ export function plan() {
   const prio = new Map(); const base = DATA.missions.map(m => m.id);
   const ranked = custom.length ? [...custom, ...base.filter(id => !custom.includes(id))] : base;
   ranked.forEach((id, i) => prio.set(id, i));
-  // finished missions go first (in story order) so the list reads as history, then what's left
-  const key = m => isDone(m.id) ? -2e6 + prio.get(m.id) : custom.length ? prio.get(m.id) : (isMain(m) ? 1e6 : 0) + prio.get(m.id);
+  // finished (and optional) missions go first, in story order, so the list reads as history, then what's left
+  const key = m => isDone(m.id) || m.opt ? -2e6 + prio.get(m.id) : custom.length ? prio.get(m.id) : (isMain(m) ? 1e6 : 0) + prio.get(m.id);
   const R = new Map(list.map(m => [m.id, reqs(m, list)]));
   const placed = new Set(), out = [];
   let pending = [...list];

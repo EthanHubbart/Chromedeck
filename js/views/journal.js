@@ -2,12 +2,21 @@
    Missions in recommended order, with check-offs, story choices,
    mission details (requirements, unique items, deadlines) and reordering.
    ================================================================= */
-import { S, save } from "../store.js";
+import { S, save, DATA } from "../store.js";
+const DATA_MISSIONS = () => DATA.missions;
 import { mission, isDone, isAvailable, isMissed, isMain, blockers, leadsTo, lockedOutBy, deadlinesFor, anchorOf, missed, plan, move, resetOrder, markWithPrereqs, toggleDone, setChoice, progress, section, isEnding, applies } from "../journal.js";
 import { $, esc, toast, openSheet, sheetOpen } from "../ui.js";
 
 const TYPE = { main: "Main Job", side: "Side Job", gig: "Gig" };
-const PATH = { hellman: "Anders Hellman thread", evelyn: "Evelyn Parker thread", alt: "Alt Cunningham thread", takemura: "Goro Takemura thread" };
+const PATH = { hellman: "Anders Hellman thread", evelyn: "Evelyn Parker thread", alt: "Voodoo Boys (Evelyn thread, part 2)", takemura: "Goro Takemura thread" };
+/* Act 2's concurrent threads. Evelyn's chain continues straight into the Voodoo Boys (M'ap Tann
+   Pèlen needs Double Life), so those two wiki groups share one lane. */
+const LANES = [
+  { name: "Evelyn Parker → Voodoo Boys", who: "with Judy", paths: ["evelyn", "alt"], short: "Evelyn thread" },
+  { name: "Anders Hellman", who: "with Panam", paths: ["hellman"], short: "Hellman thread" },
+  { name: "Goro Takemura", who: "", paths: ["takemura"], short: "Takemura thread" }
+];
+const laneOf = m => LANES.find(l => l.paths.includes(m.path));
 const CHOICES = {
   lifepath: { label: "Lifepath", opts: [["corpo", "Corpo"], ["nomad", "Nomad"], ["streetkid", "Streetkid"]] },
   pl: { label: "Phantom Liberty: at Firestarter you sided with", opts: [["", "Not yet"], ["songbird", "Songbird"], ["reed", "Reed"]] },
@@ -32,7 +41,8 @@ function tags(m, inNext) {
 }
 function row(m, inNext) {
   const d = isDone(m.id);
-  const sub = [typeLabel(m), m.line || m.giver, m.district, m.pl && "PL"].filter(Boolean).map(esc).join(" · ");
+  const lane = m.path && laneOf(m);
+  const sub = [typeLabel(m), lane ? lane.short : m.line || m.giver, m.district, m.pl && "PL"].filter(Boolean).map(esc).join(" · ");
   return `<div class="mrow ${d ? "done" : ""} ${isMissed(m) ? "missed" : ""}">
     <button class="mchk" data-mdone="${m.id}" aria-pressed="${d}" aria-label="${d ? "Mark not done" : "Mark done"}: ${esc(m.name)}"><i></i></button>
     <button class="mmain" data-mission="${m.id}"><span class="nm">${esc(m.name)}<small>${sub}</small></span><span class="tags">${tags(m, inNext)}</span></button>
@@ -44,15 +54,41 @@ function seg(key) {
 }
 /* Rows with section headers. Headers follow the main story (side jobs sit under the
    story point where they unlock), so the section is tracked across hidden rows too. */
-function withHeaders(all, visible) {
-  let sec = null, printed = null, html = "";
+function withHeaders(all, visible, lanes) {
+  let sec = null, printed = null, html = ""; const seen = new Set();
   for (const m of all) {
     if (isMain(m)) sec = m.sec;
     if (!visible(m)) continue;
-    if (sec && sec !== printed) { printed = sec; const s = section(sec); html += `<div class="msec"><b>${esc(s.name)}</b>${s.note ? `<small>${esc(s.note)}</small>` : ""}</div>`; }
+    if (sec && sec !== printed) {
+      printed = sec; const s = section(sec);
+      // story sections can interleave (Phantom Liberty opens mid-Act 2): a section that resumes says so
+      if (seen.has(sec)) html += `<div class="msec cont"><b>${esc(s.name)} (continued)</b></div>`;
+      else {
+        seen.add(sec);
+        html += `<div class="msec"><b>${esc(s.name)}</b>${s.note ? `<small>${esc(s.note)}</small>` : ""}</div>`;
+        if (sec === "act2" && lanes) html += threadCard();
+      }
+    }
     html += row(m);
   }
   return html;
+}
+/* Act 2 threads: one lane per concurrent storyline, with a step bar and its next job. */
+function threadCard() {
+  const act2 = DATA_MISSIONS().filter(m => m.sec === "act2" && m.path);
+  const cross = [];
+  const lanes = LANES.map(l => {
+    const steps = act2.filter(m => l.paths.includes(m.path));
+    const done = steps.filter(m => isDone(m.id)).length;
+    const next = steps.find(m => !isDone(m.id));
+    steps.forEach(m => (m.after || []).forEach(r => { const x = mission(r); if (x && x.path && !l.paths.includes(x.path)) cross.push(`${m.name} also needs ${x.name} (${laneOf(x).short})`); }));
+    const bar = steps.map(m => `<i class="${isDone(m.id) ? "on" : m === next ? "nx" : ""}" title="${esc(m.name)}${isDone(m.id) ? " ✓" : ""}"></i>`).join("");
+    const nextHtml = !next ? `<span class="okt">Done ✓</span>` : `Next: <button class="lnk" data-mission="${next.id}">${esc(next.name)}</button>${isAvailable(next) ? "" : ` <span class="hint">(locked)</span>`}`;
+    return `<div class="lane"><div class="lt"><b>${esc(l.name)}</b>${l.who ? `<small>${esc(l.who)}</small>` : ""}<span class="num">${done}/${steps.length}</span></div>
+      <div class="lbar" role="img" aria-label="${esc(l.name)}: ${done} of ${steps.length} done">${bar}</div><div class="lnext">${nextHtml}</div></div>`;
+  }).join("");
+  return `<div class="threads"><div class="th">Act 2 threads · run side by side</div>${lanes}
+    <p class="hint" style="margin:6px 0 0">Play them in any order; all three lead into Tapeworm and Act 3.${cross.length ? " " + esc(cross.join("; ")) + "." : ""}</p></div>`;
 }
 
 export function renderJournal() {
@@ -89,7 +125,7 @@ export function renderJournal() {
   <div class="panel"><div class="ph"><h2>Recommended order</h2><span class="meta">${custom ? `custom · <button class="lnk" id="jReset">reset</button>` : "re-plans as you go"}</span></div><div class="pb">
     <div class="chips" role="group" aria-label="Show">${FILTERS.map(([k, l]) => `<button class="chip ${f === k ? "on" : ""}" data-jfilter="${k}" aria-pressed="${f === k}">${l} <span class="num">${count(k)}</span></button>`).join("")}</div>
     <div class="field" style="padding-top:0"><div class="k">Hide finished missions</div><div class="v"><button class="tog ${hide ? "on" : ""}" id="jHide" aria-pressed="${hide}" aria-label="Hide finished missions"></button></div></div>
-    ${withHeaders(story, visible) || `<p class="hint">Nothing left here.</p>`}
+    ${withHeaders(story, visible, f !== "side") || `<p class="hint">Nothing left here.</p>`}
     ${ends.some(visible) ? `<details class="mends"><summary><b>Ending paths</b><small>You pick one at the end of Nocturne Op55N1. Each is its own run; completionists reload to see them all.</small></summary>${withHeaders(ends, visible)}</details>` : ""}
     ${lost.length && f !== "main" ? `<details class="mends"><summary><b>Missed · ${lost.length}</b><small>Their deadline mission is done. If you actually did one, tick it.</small></summary>${lost.map(m => row(m)).join("")}</details>` : ""}
   </div></div>

@@ -282,3 +282,25 @@ details.mends>summary small{display:block;font-size:12px;color:var(--muted)}
 .prog small.bad{color:var(--red);letter-spacing:.04em;text-transform:none;margin-top:3px}
 .mrow.missed .mmain .nm{color:var(--muted)}
 .chips .chip .num{opacity:.75;margin-left:2px}
+
+/* Act 2 threads card */
+.threads{border:1px solid var(--line2);background:var(--panel2);padding:8px 10px 10px;margin:8px 0 4px;clip-path:polygon(0 0,calc(100% - 10px) 0,100% 10px,100% 100%,0 100%)}
+.threads .th{font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--yellow);font-weight:700;margin-bottom:2px}
+.lane{padding:7px 0;border-bottom:1px solid var(--line)}
+.lane:last-of-type{border-bottom:0}
+.lane .lt{display:flex;align-items:baseline;gap:6px}
+.lane .lt b{font-size:15px}
+.lane .lt small{font-size:12px;color:var(--muted)}
+.lane .lt .num{margin-left:auto;font-weight:700;color:var(--cyan)}
+.lbar{display:flex;gap:3px;margin:5px 0 4px}
+.lbar i{flex:1;height:8px;background:#142129;border:1px solid var(--line2)}
+.lbar i.on{background:var(--yellow);border-color:var(--yellow)}
+.lbar i.nx{border-color:var(--cyan);box-shadow:inset 0 0 0 1px var(--cyan)}
+.lnext{font-size:14px;color:var(--muted)}
+.lnext .okt{color:var(--cyan);font-weight:700}
+.chk{display:block;width:100%;text-align:left;padding:8px 0;border-bottom:1px solid var(--line)}
+.chk:last-child{border-bottom:0}
+.chk b{display:block;font-size:15px;color:var(--cyan)}
+.chk small{display:block;font-size:13px;color:var(--muted);line-height:1.35;margin-top:2px}
+.msec.cont{padding-top:10px}
+.msec.cont b{color:var(--cyan-dim)}
