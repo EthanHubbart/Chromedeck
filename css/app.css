@@ -304,3 +304,33 @@ details.mends>summary small{display:block;font-size:12px;color:var(--muted)}
 .chk small{display:block;font-size:13px;color:var(--muted);line-height:1.35;margin-top:2px}
 .msec.cont{padding-top:10px}
 .msec.cont b{color:var(--cyan-dim)}
+
+/* journal: layout switch and storyline groups */
+.seg.jmode{display:grid;grid-template-columns:1fr 1fr;width:100%;margin:0 0 8px}
+.seg.jmode button{min-height:40px}
+details.grp{border-top:1px solid var(--line2)}
+details.grp>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:10px 0;min-height:48px}
+details.grp>summary::-webkit-details-marker{display:none}
+details.grp>summary::before{content:"▸";color:var(--cyan);width:12px;flex-shrink:0}
+details.grp[open]>summary::before{content:"▾"}
+details.grp .gt{flex:1;min-width:0}
+details.grp .gt b{display:block;font-size:15px}
+details.grp .gt small{display:block;font-size:12px;color:var(--muted)}
+details.grp .gbar{width:56px;height:5px;background:#142129;flex-shrink:0}
+details.grp .gbar em{display:block;height:100%;background:var(--yellow)}
+details.grp[open]{padding-bottom:6px}
+
+/* weapons */
+.prog.one{grid-template-columns:1fr}
+.ic-d{color:var(--r-iconic);font-size:12px;vertical-align:1px}
+.mchk.nochk{display:block}
+select.sel{background:var(--panel2);border:1px solid var(--line2);color:var(--text);padding:8px 10px;min-height:40px;font-weight:600;max-width:210px}
+.wimg{margin:0 0 8px;background:radial-gradient(ellipse at center,rgba(91,231,242,.08),transparent 70%);border:1px solid var(--line);text-align:center;padding:10px 6px 4px}
+.wimg img{max-width:100%;max-height:150px;object-fit:contain;display:block;margin:0 auto}
+.wimg figcaption{font-size:11px;color:var(--faint);margin-top:4px}
+.wimg.noimg img{display:none}
+.wimg.noimg::before{content:"◇ picture unavailable offline";display:block;color:var(--faint);font-size:13px;padding:24px 0}
+.wstats{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin:0 0 8px}
+.wstats div{border:1px solid var(--line);padding:5px 7px}
+.wstats small{display:block;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.wstats b{font-size:17px}

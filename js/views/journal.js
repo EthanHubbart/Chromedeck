@@ -6,6 +6,8 @@ import { S, save, DATA } from "../store.js";
 const DATA_MISSIONS = () => DATA.missions;
 import { mission, isDone, isAvailable, isMissed, isMain, blockers, leadsTo, lockedOutBy, deadlinesFor, anchorOf, requirementsOf, missed, plan, move, resetOrder, markWithPrereqs, toggleDone, setChoice, progress, section, isEnding, applies } from "../journal.js";
 import { $, esc, toast, openSheet, sheetOpen } from "../ui.js";
+import { weaponsFrom } from "./weapons.js";
+import { vehiclesFrom } from "./collection.js";
 
 const TYPE = { main: "Main Job", side: "Side Job", gig: "Gig" };
 const PATH = { hellman: "Anders Hellman thread", evelyn: "Evelyn Parker thread", alt: "Voodoo Boys (Evelyn thread, part 2)", takemura: "Goro Takemura thread" };
@@ -123,15 +125,79 @@ export function renderJournal() {
     ${!pr.storyDone ? `<p class="hint" style="margin:8px 0 0">Mid-playthrough? Open the last main job you finished and tap <b>Done, plus everything before it</b>, then tick off side jobs.</p>` : ""}
   </div></div>
 
-  <div class="panel"><div class="ph"><h2>Recommended order</h2><span class="meta">${custom ? `custom · <button class="lnk" id="jReset">reset</button>` : "re-plans as you go"}</span></div><div class="pb">
+  <div class="panel"><div class="ph"><h2>All missions</h2><span class="meta">${J.mode === "lines" ? "by storyline" : custom ? `custom order · <button class="lnk" id="jReset">reset</button>` : "recommended order"}</span></div><div class="pb">
+    <div class="search"><input id="jq" type="search" placeholder="Search missions, characters, fixers…" value="${esc(J.q || "")}" aria-label="Search missions" autocomplete="off"></div>
+    <div class="seg jmode" role="group" aria-label="List layout">${[["order", "Order"], ["lines", "By storyline"]].map(([k, l]) => `<button data-jmode="${k}" class="${(J.mode || "order") === k ? "on" : ""}" aria-pressed="${(J.mode || "order") === k}">${l}</button>`).join("")}</div>
     <div class="chips" role="group" aria-label="Show">${FILTERS.map(([k, l]) => `<button class="chip ${f === k ? "on" : ""}" data-jfilter="${k}" aria-pressed="${f === k}">${l} <span class="num">${count(k)}</span></button>`).join("")}</div>
     <div class="field" style="padding-top:0"><div class="k">Hide finished missions</div><div class="v"><button class="tog ${hide ? "on" : ""}" id="jHide" aria-pressed="${hide}" aria-label="Hide finished missions"></button></div></div>
+    <div id="jList"></div>
+  </div></div>
+  <p class="hint" style="margin-top:0">Side jobs and gigs come first in the order: doing them as soon as they unlock keeps deadlines safe. NCPD Scanner Hustles aren't tracked. Data from the <a href="https://cyberpunk.fandom.com/wiki/Cyberpunk_2077_Side_Jobs" target="_blank" rel="noopener">Cyberpunk Wiki</a>; tap a mission for its source.</p>`;
+  renderList();
+}
+
+/* ---------- the list: search results, recommended order, or grouped by storyline ---------- */
+const norm = t => (t || "").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+function groupOf(m) {
+  if (isMain(m)) {
+    if (["prologue", "act1", "interlude"].includes(m.sec)) return "Prologue & Act 1";
+    if (isEnding(m)) return "Endings · " + section(m.sec).name.replace(/^Ending path · /, "");
+    return section(m.sec).name;
+  }
+  if (m.type === "gig") return `Gigs · ${m.giver}` + (m.giver === "Rogue Amendiares" ? "" : m.pl ? " · Dogtown" : ` · ${m.district}`);
+  if (m.line) return "Side jobs · " + m.line;
+  if (m.minor) return "Minor side jobs · " + (m.pl ? "Dogtown" : (m.district || "Anywhere").split(",")[0].trim());
+  return "Side jobs · Early jobs";
+}
+/* Browsing order for storyline groups: main story, Phantom Liberty, Act 3, character side jobs,
+   early and minor side jobs, gigs, endings. Within a rank, groups keep plan order. */
+function groupRank(m) {
+  if (isMain(m)) return isEnding(m) ? 7 : m.sec === "act3" ? 2 : m.sec.startsWith("pl") ? 1 : 0;
+  if (m.type === "gig") return 6;
+  return m.line ? 3 : m.minor ? 5 : 4;
+}
+function renderList() {
+  const el = $("#jList"); if (!el) return;
+  const J = S.ui.journal; const hide = J.hideDone; const f = J.filter || "all";
+  const P = plan(); const lost = missed();
+  const q = norm((J.q || "").trim());
+  if (q) {
+    const hits = [...P, ...lost].filter(m => matchFilter(m, f) && [m.name, m.giver, m.line, m.district, m.obj, m.id].some(x => norm(x).includes(q)));
+    el.innerHTML = `<p class="hint" style="margin:4px 0">${hits.length} match${hits.length === 1 ? "" : "es"}${hits.length > 60 ? " (first 60)" : ""} · finished ones included</p>` + hits.slice(0, 60).map(m => row(m)).join("");
+    return;
+  }
+  const visible = m => matchFilter(m, f) && !(hide && isDone(m.id));
+  if (J.mode === "lines") {
+    const groups = new Map();
+    const rank = new Map();
+    for (const m of P) { if (!matchFilter(m, f)) continue; const g = groupOf(m); if (!groups.has(g)) { groups.set(g, []); rank.set(g, groupRank(m)); } groups.get(g).push(m); }
+    const sorted = [...groups].map((e, i) => [e, i]).sort((a, b) => rank.get(a[0][0]) - rank.get(b[0][0]) || a[1] - b[1]).map(x => x[0]);
+    const open = new Set(J.open || []);
+    let html = "";
+    for (const [g, ms] of sorted) {
+      const done = ms.filter(m => isDone(m.id)).length, left = ms.filter(visible);
+      const avail = ms.filter(isAvailable).length, dl = ms.filter(hasDeadline).length;
+      const pct = Math.round(done / ms.length * 100);
+      html += `<details class="grp" data-grp="${esc(g)}" ${open.has(g) ? "open" : ""}><summary><span class="gt"><b>${esc(g)}</b><small>${done}/${ms.length} done${avail ? ` · ${avail} available` : ""}${dl ? ` · ⏳ ${dl}` : ""}</small></span><i class="gbar"><em style="width:${pct}%"></em></i></summary>
+        ${g === "Act 2" && (f === "all" || f === "main") ? threadCard() : ""}${left.map(m => row(m)).join("") || `<p class="hint" style="margin:6px 0">All done ✓</p>`}</details>`;
+    }
+    if (lost.length && f !== "main") html += `<details class="grp"><summary><span class="gt"><b>Missed</b><small>${lost.length} · their deadline mission is done</small></span></summary>${lost.map(m => row(m)).join("")}</details>`;
+    el.innerHTML = `<div class="btnrow" style="margin:0 0 6px"><button class="btn sm" id="jOpenAll">Expand all</button><button class="btn sm" id="jCloseAll">Collapse all</button></div>` + (html || `<p class="hint">Nothing here.</p>`);
+    return;
+  }
+  const story = P.filter(m => !isEnding(m)), ends = P.filter(isEnding);
+  el.innerHTML = `
     ${withHeaders(story, visible, f === "all" || f === "main") || `<p class="hint">Nothing left here.</p>`}
     ${ends.some(visible) ? `<details class="mends"><summary><b>Ending paths</b><small>You pick one at the end of Nocturne Op55N1. Each is its own run; completionists reload to see them all.</small></summary>${withHeaders(ends, visible)}</details>` : ""}
-    ${lost.length && f !== "main" ? `<details class="mends"><summary><b>Missed · ${lost.length}</b><small>Their deadline mission is done. If you actually did one, tick it.</small></summary>${lost.map(m => row(m)).join("")}</details>` : ""}
-  </div></div>
-  <p class="hint">Side jobs and gigs come first in the order: doing them as soon as they unlock keeps deadlines safe. NCPD Scanner Hustles aren't tracked. Data from the <a href="https://cyberpunk.fandom.com/wiki/Cyberpunk_2077_Side_Jobs" target="_blank" rel="noopener">Cyberpunk Wiki</a>; tap a mission for its source.</p>`;
+    ${lost.length && f !== "main" ? `<details class="mends"><summary><b>Missed · ${lost.length}</b><small>Their deadline mission is done. If you actually did one, tick it.</small></summary>${lost.map(m => row(m)).join("")}</details>` : ""}`;
 }
+/* remember which storyline groups are open */
+document.addEventListener("toggle", e => {
+  const d = e.target; if (!d.matches || !d.matches("details.grp[data-grp]")) return;
+  const J = S.ui.journal; const set = new Set(J.open || []);
+  d.open ? set.add(d.dataset.grp) : set.delete(d.dataset.grp);
+  J.open = [...set]; save();
+}, true);
 
 function openMission(id) {
   const m = mission(id); const d = isDone(id);
@@ -160,6 +226,8 @@ function openMission(id) {
       ${m.obj ? `<div class="k-h">Objective</div><p style="margin:0 0 8px">${esc(m.obj)}</p>` : ""}
       ${m.note ? `<div class="eff">${esc(m.note)}</div>` : ""}
       ${items ? `<div class="k-h">Rewards & unique items</div><ul class="ilist">${items}</ul>${(m.items || []).some(i => i.miss) ? `<p class="hint" style="margin:0 0 8px">Missable items can only be picked up during this mission.</p>` : ""}` : ""}
+      ${(() => { const ws = weaponsFrom(m.id).filter(w => w.iconic); return ws.length ? `<div class="k-h">Iconic weapons here</div><p style="margin:0 0 8px">${ws.map(w => `<button class="lnk" data-weapon="${w.id}">${esc(w.name)}</button>${S.playthrough.weapons[w.id] ? " ✓" : w.miss && !w.lowe ? " ⚠" : ""}`).join(", ")}</p>` : ""; })()}
+      ${(() => { const vs = vehiclesFrom(m.id); return vs.length ? `<div class="k-h">Vehicles here</div><p style="margin:0 0 8px">${vs.map(v => `<button class="lnk" data-vehicle="${v.id}">${esc(v.name)}</button>${S.playthrough.vehicles[v.id] ? " ✓" : v.dep ? " ⚠" : ""}`).join(", ")}</p>` : ""; })()}
       ${reqNames.length ? `<div class="k-h">${rq.any.length && !rq.all.length ? "Follows one of" : m.type === "gig" && !(m.after || []).length ? `Unlocks after tier ${m.tier - 1}` : "Requires"}</div><p style="margin:0 0 8px">${plist(reqNames)}</p>` : ""}
       ${anc ? `<div class="k-h">Opens up</div><p style="margin:0 0 8px">After ${plist([anc])} <span class="hint">(estimated: the wiki lists no prerequisite, and this is when its area opens)</span></p>` : ""}
       ${m.ext && m.ext.length ? `<div class="k-h">Also needs</div><p style="margin:0 0 8px">${esc(m.ext.join("; "))} <span class="hint">(not tracked in the app yet)</span></p>` : ""}
@@ -184,7 +252,21 @@ export function click(t) {
   if (ds.mmove) { const [id, d] = ds.mmove.split(":"); const why = move(id, +d); if (why) toast(why, 2800); else { refresh(id); toast(+d < 0 ? "Moved earlier" : "Moved later"); } return true; }
   if (ds.choice) { const [k, v] = ds.choice.split(":"); setChoice(k, v); refresh(); return true; }
   if (ds.jfilter) { S.ui.journal.filter = ds.jfilter; refresh(); return true; }
+  if (ds.jmode) { S.ui.journal.mode = ds.jmode; refresh(); return true; }
+  if (t.id === "jOpenAll" || t.id === "jCloseAll") {
+    const all = t.id === "jOpenAll"; document.querySelectorAll("#jList details.grp[data-grp]").forEach(d => { d.open = all; });
+    S.ui.journal.open = all ? [...document.querySelectorAll("#jList details.grp[data-grp]")].map(d => d.dataset.grp) : []; save(); return true;
+  }
   if (t.id === "jHide") { S.ui.journal.hideDone = !S.ui.journal.hideDone; refresh(); return true; }
   if (t.id === "jReset") { if (confirm("Go back to the recommended order? Your manual moves will be undone.")) { resetOrder(); refresh(); toast("Recommended order restored"); } return true; }
+  return false;
+}
+
+export function input(t) {
+  if (t.id === "jq") { S.ui.journal.q = t.value; renderList(); return true; }
+  return false;
+}
+export function change(t) {
+  if (t.id === "jq") { save(); return true; }
   return false;
 }
