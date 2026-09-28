@@ -5,7 +5,7 @@
    ================================================================================ */
 import { S, DATA, save } from "../store.js";
 import { mission, isDone } from "../journal.js";
-import { $, esc, toast, openSheet, sheetOpen } from "../ui.js";
+import { $, esc, toast, openSheet, sheetOpen, wikiImg } from "../ui.js";
 
 const eb = n => "€$" + n.toLocaleString("en-US");
 const where = x => [x.sub, x.dist].filter((v, i, a) => v && a.indexOf(v) === i).join(", ");
@@ -130,7 +130,7 @@ function openItem(k, id) {
   const verb = { tarot: "Found it", psychos: "Done", airdrops: "Looted it", relic: "Used it", homes: "Unlocked" }[k];
   openSheet(K.title, `
     <div class="detail">
-      ${x.img ? `<figure class="wimg tarot"><img src="${esc(x.img)}" alt="${esc(x.name)} tarot card" loading="lazy" onerror="this.parentNode.classList.add('noimg')"><figcaption>Image: Cyberpunk Wiki / CD PROJEKT RED</figcaption></figure>` : ""}
+      ${x.img ? `${wikiImg(x.img, x.name + " tarot card", "tarot")}` : ""}
       <div class="name">${esc(x.name)}</div>
       <div class="line">${[x.who && "Cyberpsycho: " + x.who, x.sub, x.dist].filter((v, i, a) => v && a.indexOf(v) === i).map(v => `<span>${esc(v)}</span>`).join("<span>·</span>")}</div>
       ${d ? `<div class="okbox">${esc(verb)} ✓${killed ? " · killed" : k === "psychos" ? " · taken alive" : ""}</div>` : ""}
