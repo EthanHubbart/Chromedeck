@@ -35,7 +35,6 @@ data/weapons.js       every weapon (197, 114 iconic) with stats, where to get it
 data/vehicles.js      every ownable car and motorcycle (87) with how to get it, Autofixer price/requirements, specs
 data/collectibles.js  Tarot graffiti (26), Cyberpsycho Sightings (17), PL airdrops (16 + 3 treasures), Relic terminals (9), apartments (6 + 4 romance)
 icons/                icon.svg (source) and rendered PNGs
-chromedeck.html       the original single-file planner, kept so old saves can be exported from it; not part of the app
 ```
 
 Navigation (chosen by the owner, left to right): **Character** (sub-tabs Cyberware, Perks, Capacity, Builds), **Gear** (sub-tabs Weapons, Wardrobe), **Collection** (sub-tabs Overview, Vehicles, Collectibles, Homes), **Journal**, **System**. Character-specific screens stay toward the left. Tabs with sub-tabs remember the last one per tab in `S.ui.subs`. The tab list lives in `TABS` in `js/app.js` and `UI_TABS` in `js/store.js`; keep them in sync. New modules replace the placeholders in `js/views/soon.js`. Only the visible view renders; `renderAll()` redraws nav, header and the current view.
@@ -70,7 +69,7 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
 - Mutations autosave. Keep export/import of a full JSON backup, because storage on iPhone can still be lost.
 - A fresh install starts with one blank "Build 1" (no example builds; the owner's old sheet builds were removed in 0.10.0).
 - Per-build data (attributes, perks, equipped cyberware, outfit) lives on the build. Per-playthrough progress (shards, missions, missables, vehicles, collected clothing) lives under `playthrough`.
-- New fields get defaults in normalization, which runs after load, import and data edits. For shape changes, write a one-time migration (see `migrateFlags()` in `chromedeck.html`). Don't change the storage key.
+- New fields get defaults in normalization, which runs after load, import and data edits. For shape changes, write a one-time migration (see `migrateFlags()` in `js/store.js`). Don't change the storage key.
 - User edits to game data are stored in `S.dataEdits` as **diffs over SEED** (`{key:{set:{id:entry},del:[ids]}}` for id'd lists, `{key:{replace:value}}` otherwise), so data updates still reach users for everything they didn't edit. Old v1 saves with a full `dataOverride` are converted on load. If edits stop validating against new data, they're set aside (`S.dataEditsSetAside`) and the user is told.
 - UI position is kept in `S.ui` (`tab`, and `subs` per tab). v0.3.0 saves with a single `sub` or the old Wardrobe tab are migrated in `normalize()`.
 
