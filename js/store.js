@@ -166,21 +166,60 @@ function migrateFlags(b) {
 }
 
 /* Fill in missing fields and fit equipped arrays to the slot counts — after load, import, or data edits. */
-export function normalize() {
-  if (!S.playthrough) S.playthrough = { shards: {} };
-  if (!S.playthrough.shards) S.playthrough.shards = {};
-  const P = S.playthrough;
+/* One playthrough's progress: fill in missing fields and drop ids the data no longer has. */
+export function blankPlaythrough() { const P = {}; normalizePlaythrough(P); return P; }
+function normalizePlaythrough(P) {
+  if (!P.shards) P.shards = {};
   if (!P.missions || typeof P.missions !== "object") P.missions = {};          // {missionId: timestamp done}
   if (!P.choices) P.choices = { lifepath: null, pl: null, plEnd: null };     // story branches taken this run
-  if (!Array.isArray(P.order)) P.order = [];
+  if (!P.v || typeof P.v !== "object") P.v = { body: null, voice: null };    // V's body type and voice: "f" | "m" (romance, clothing renders)
+  if (!Array.isArray(P.order)) P.order = [];                                  // user's custom mission order (ids), empty = recommended
   if (!P.weapons || typeof P.weapons !== "object") P.weapons = {};             // {weaponId: timestamp owned}
   if (!P.vehicles || typeof P.vehicles !== "object") P.vehicles = {};           // {vehicleId: timestamp owned}
   for (const k of ["tarot", "psychos", "psychoKilled", "airdrops", "relic", "apartments"]) if (!P[k] || typeof P[k] !== "object") P[k] = {};   // {id: timestamp} (psychoKilled: {id: true})
   const prune = (list, obj) => { if (!list) return; const ok = new Set(list.map(x => x.id)); for (const id in obj) if (!ok.has(id)) delete obj[id]; };
   prune(DATA.tarot, P.tarot); prune(DATA.cyberpsychos, P.psychos); prune(DATA.cyberpsychos, P.psychoKilled); prune(DATA.airdrops, P.airdrops); prune(DATA.relicTerminals, P.relic); prune(DATA.apartments, P.apartments);
-  if (DATA.vehicles) { const ok = new Set(DATA.vehicles.map(v => v.id)); for (const id in P.vehicles) if (!ok.has(id)) delete P.vehicles[id]; }
-  if (DATA.weapons) { const ok = new Set(DATA.weapons.map(w => w.id)); for (const id in P.weapons) if (!ok.has(id)) delete P.weapons[id]; }                                // user's custom mission order (ids), empty = recommended
-  if (DATA.missions) { const ok = new Set(DATA.missions.map(m => m.id)); for (const id in P.missions) if (!ok.has(id)) delete P.missions[id]; P.order = P.order.filter(id => ok.has(id)); }
+  prune(DATA.vehicles, P.vehicles); prune(DATA.weapons, P.weapons); prune(DATA.missions, P.missions);
+  if (DATA.missions) { const ok = new Set(DATA.missions.map(m => m.id)); P.order = P.order.filter(id => ok.has(id)); }
+}
+
+/* ---------- saves (playthroughs) ----------
+   Up to MAX_SAVES playthroughs. The active one's progress is S.playthrough (every screen
+   reads that); the others wait in S.stash {saveId: playthrough}. S.saves lists them all
+   ({id, name, created}) in the order shown. Builds and data edits are shared by all saves. */
+export const MAX_SAVES = 5;
+export const activeSave = () => S.saves.find(x => x.id === S.activeSave);
+export function newSave(name, setup) {
+  if (S.saves.length >= MAX_SAVES) return false;
+  const P = blankPlaythrough();
+  if (setup) { P.choices.lifepath = setup.lifepath || null; P.v.body = setup.body || null; P.v.voice = setup.voice || null; }
+  const sv = { id: uid(), name: (name || "").trim() || `Save ${S.saves.length + 1}`, created: Date.now() };
+  S.stash[S.activeSave] = S.playthrough; S.saves.push(sv); S.activeSave = sv.id; S.playthrough = P;
+  return sv;
+}
+export function switchSave(id) {
+  if (id === S.activeSave || !S.stash[id]) return false;
+  S.stash[S.activeSave] = S.playthrough; S.playthrough = S.stash[id]; delete S.stash[id]; S.activeSave = id;
+  return true;
+}
+export function deleteSave(id) {
+  if (S.saves.length < 2) return false;
+  S.saves = S.saves.filter(x => x.id !== id); delete S.stash[id];
+  if (id === S.activeSave) { S.activeSave = S.saves[0].id; S.playthrough = S.stash[S.activeSave]; delete S.stash[S.activeSave]; }
+  return true;
+}
+export function renameSave(id, name) { const sv = S.saves.find(x => x.id === id); if (sv && name.trim()) sv.name = name.trim().slice(0, 40); }
+
+export function normalize() {
+  if (!S.playthrough) S.playthrough = {};
+  normalizePlaythrough(S.playthrough);
+  // saves: older states had one playthrough and no list; it becomes "Save 1"
+  if (!Array.isArray(S.saves) || !S.saves.length) { S.saves = [{ id: uid(), name: "Save 1", created: Date.now() }]; S.activeSave = S.saves[0].id; }
+  if (!S.stash || typeof S.stash !== "object") S.stash = {};
+  if (!S.saves.some(x => x.id === S.activeSave)) S.activeSave = S.saves[0].id;
+  delete S.stash[S.activeSave];
+  S.saves = S.saves.filter(x => x.id === S.activeSave || S.stash[x.id]);
+  for (const id in S.stash) { if (!S.saves.some(x => x.id === id)) delete S.stash[id]; else normalizePlaythrough(S.stash[id]); }
   if (!S.dataEdits) S.dataEdits = {};
   // UI position. v0.3.0 kept one `sub` (Character only) and had Wardrobe as its own tab.
   if (!S.ui) S.ui = { tab: "character" };

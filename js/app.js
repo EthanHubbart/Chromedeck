@@ -16,9 +16,10 @@ import * as weapons from "./views/weapons.js";
 import * as collection from "./views/collection.js";
 import * as collectibles from "./views/collectibles.js";
 import * as overview from "./views/overview.js";
+import * as saves from "./views/saves.js";
 import { renderSoon } from "./views/soon.js";
 
-export const APP_VERSION = "0.10.0";   // keep in step with CACHE in sw.js
+export const APP_VERSION = "0.11.0";   // keep in step with CACHE in sw.js
 
 /* ---------- navigation ---------- */
 /* Bottom tabs, left to right. A tab with `subs` shows sub-tabs across the top
@@ -37,7 +38,7 @@ const VIEWS = {
   journal: journal.renderJournal,
   system: system.renderSystem
 };
-const HANDLERS = [cyber, perks, capacity, builds, journal, weapons, collection, collectibles, overview, system];
+const HANDLERS = [saves, cyber, perks, capacity, builds, journal, weapons, collection, collectibles, overview, system];
 
 const curTab = () => TABS.find(t => t.id === S.ui.tab) || TABS[0];
 const curSub = () => { const t = curTab(); const s = S.ui.subs[t.id]; return t.subs.some(([id]) => id === s) ? s : t.subs[0][0]; };

@@ -28,6 +28,7 @@ js/views/weapons.js   Gear › Weapons (list, filters, iconic tracking, detail);
 js/views/collection.js  Collection › Vehicles; exports vehiclesFrom() for the Journal and vehicleTally()
 js/views/collectibles.js  Collection › Collectibles (Tarot, Cyberpsychos, Airdrops, Relic switch) and Homes; KINDS config, tally()
 js/views/overview.js  Collection › Overview: the completion dashboard across Journal, Gear and Collection
+js/views/saves.js     Saves sheet (up to 5 playthroughs: new, load, rename/edit, delete) and saveStrip(); V_OPTS, vSummary()
 js/views/*.js         one module per screen: export a render function plus optional click/input/change handlers that return true when handled
 data/index.js         assembles SEED from core.js, perks.js, cyberware.js, missions.js; holds the data `version`
 data/missions.js      missionSections + missions (Main Jobs, Side Jobs incl. the wiki's Minor Jobs, Gigs); field meanings are in its header comment
@@ -69,6 +70,8 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
 - Mutations autosave. Keep export/import of a full JSON backup, because storage on iPhone can still be lost.
 - A fresh install starts with one blank "Build 1" (no example builds; the owner's old sheet builds were removed in 0.10.0).
 - Per-build data (attributes, perks, equipped cyberware, outfit) lives on the build. Per-playthrough progress (shards, missions, missables, vehicles, collected clothing) lives under `playthrough`.
+- **Saves:** up to `MAX_SAVES` (5) playthroughs. The active one is always `S.playthrough` (all screens read only that); the others sit in `S.stash` ({saveId: playthrough}); `S.saves` = [{id, name, created}], `S.activeSave` = id. Builds and data edits are shared. `newSave/switchSave/deleteSave/renameSave` in `js/store.js`; `normalizePlaythrough()` runs on every save. Pre-0.11 states become "Save 1".
+- V's setup lives on the playthrough: `choices.lifepath` and `v` = {body, voice} ("f"/"m"). It's set in the New save / Edit form, not on the main screens (owner's choice: set once per playthrough). Body type picks clothing renders; body + voice decide romance (wiki Romance page).
 - New fields get defaults in normalization, which runs after load, import and data edits. For shape changes, write a one-time migration (see `migrateFlags()` in `js/store.js`). Don't change the storage key.
 - User edits to game data are stored in `S.dataEdits` as **diffs over SEED** (`{key:{set:{id:entry},del:[ids]}}` for id'd lists, `{key:{replace:value}}` otherwise), so data updates still reach users for everything they didn't edit. Old v1 saves with a full `dataOverride` are converted on load. If edits stop validating against new data, they're set aside (`S.dataEditsSetAside`) and the user is told.
 - UI position is kept in `S.ui` (`tab`, and `subs` per tab). v0.3.0 saves with a single `sub` or the old Wardrobe tab are migrated in `normalize()`.

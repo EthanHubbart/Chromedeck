@@ -351,3 +351,15 @@ select.sel{background:var(--panel2);border:1px solid var(--line2);color:var(--te
 .drow.full .dn{color:var(--cyan)}
 .drow.full em{background:var(--cyan)}
 .drow:hover .dl,.drow:focus-visible .dl{color:var(--cyan)}
+
+/* ---------- saves ---------- */
+.savestrip{display:flex;align-items:center;gap:10px;justify-content:space-between;border:1px solid var(--line);padding:6px 6px 6px 10px;margin:8px 0 2px}
+.savestrip span{min-width:0}
+.savestrip b{display:block;font-size:15px;line-height:1.15}
+.savestrip small{display:block;font-size:12px;color:var(--muted);line-height:1.2}
+.savestrip .btn{flex-shrink:0}
+.saverow{border:1px solid var(--line);padding:8px 10px;margin-bottom:8px}
+.saverow.on{border-color:var(--cyan-dim)}
+.saverow b{font-size:16px}
+.saverow small{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.saverow .btnrow{margin-top:6px}

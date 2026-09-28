@@ -4,6 +4,7 @@
 import { SEED } from "../../data/index.js";
 import { S, DATA, store, save, setData, resetData, validateData, hasEdits } from "../store.js";
 import * as pics from "../offline.js";
+import { saveStrip } from "./saves.js";
 
 /* Open questions to confirm in the game: every data entry marked verified:false, plus rules
    that aren't tied to one entry. */
@@ -38,6 +39,9 @@ export function renderSystem() {
       : `<p class="hint" style="margin:0">On iPhone: open this page in Safari → Share → <b>Add to Home Screen</b>. On a PC: use the install icon in Chrome or Edge's address bar, or just bookmark it.</p>`;
 
   $("#v-system").innerHTML = `
+  <div class="panel"><div class="ph"><h2>Saves</h2><span class="meta">${S.saves.length} of 5</span></div><div class="pb">${saveStrip()}
+    <p class="hint" style="margin:6px 0 0">Start a new playthrough, switch between up to 5, or rename one. Builds are shared by all saves.</p></div></div>
+
   <div class="panel"><div class="ph"><h2>Backup</h2><span class="meta">${S.builds.length} build${S.builds.length > 1 ? "s" : ""}</span></div><div class="pb">
     <p class="hint" style="margin:0 0 8px">${persistent ? "Everything saves on this device automatically. Export a backup now and then — it's the only copy if the device or browser clears its storage." : "This browser isn't allowing storage, so nothing survives closing it. Export a backup to keep your work."}</p>
     <div class="btnrow"><button class="btn pri" id="sExport">Export everything</button><button class="btn" id="sImport">Restore a backup</button></div>

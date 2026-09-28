@@ -7,6 +7,7 @@ import { progress } from "../journal.js";
 import { tally, killedCount, KINDS } from "./collectibles.js";
 import { vehicleTally } from "./collection.js";
 import { $, esc } from "../ui.js";
+import { saveStrip } from "./saves.js";
 import { go } from "../app.js";
 
 function rows() {
@@ -41,6 +42,7 @@ export function renderOverview() {
   const full = all.filter(x => x.total && x.done === x.total).length;
   $("#v-overview").innerHTML = `
   <div class="panel"><div class="ph"><h2>Completion</h2><span class="meta">${full} of ${all.length} trackers at 100%</span></div><div class="pb">
+    ${saveStrip()}
     <div class="prog one"><div><small>Everything tracked</small><b class="num">${pct(done, total)}<span>%</span></b><i><em style="width:${pct(done, total)}%"></em></i><small>${done} of ${total} checked off</small></div></div>
   </div></div>
   ${groups.map(g => `<div class="panel"><div class="ph"><h2>${esc(g.h)}</h2></div><div class="pb dash">
