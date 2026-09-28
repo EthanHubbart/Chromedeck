@@ -11,9 +11,12 @@ export function attrMeta(id) { return DATA.attributes.find(a => a.id === id); }
 export function attrVal(b, a) { const P = DATA.progression; return Math.max(P.attrBase, Math.min(P.attrMax, (b.attrs && b.attrs[a]) || P.attrBase)); }
 export function perkLevel(b, id) { return (b.perks && b.perks[id]) | 0; }
 export function perkCost(p) { return p.cost || 1; }
+/* A perk's parents: `req` is one id, a list of ids (all required), or null. */
+export function reqsOf(p) { return !p.req ? [] : Array.isArray(p.req) ? p.req : [p.req]; }
 export function perkGate(b, p) {
   if (p.attr !== "relic" && attrVal(b, p.attr) < p.tier) return { ok: false, why: `Needs ${attrMeta(p.attr).name} ${p.tier}` };
-  if (p.req && perkLevel(b, p.req) < 1) return { ok: false, why: `Needs ${perk(p.req).name}` };
+  const missing = reqsOf(p).filter(r => perkLevel(b, r) < 1);
+  if (missing.length) return { ok: false, why: `Needs ${missing.map(r => perk(r).name).join(" and ")}` };
   return { ok: true };
 }
 export function budgets(b) {
@@ -40,7 +43,7 @@ export function derived(b) {
   };
 }
 export function dependents(id) { // every perk that (transitively) requires id
-  const out = []; const walk = x => { DATA.perks.forEach(p => { if (p.req === x && !out.includes(p.id)) { out.push(p.id); walk(p.id); } }); }; walk(id); return out;
+  const out = []; const walk = x => { DATA.perks.forEach(p => { if (reqsOf(p).includes(x) && !out.includes(p.id)) { out.push(p.id); walk(p.id); } }); }; walk(id); return out;
 }
 export function addPerkPoint(b, id) {
   const p = perk(id); const g = perkGate(b, p); if (!g.ok) { toast(g.why); return false; }

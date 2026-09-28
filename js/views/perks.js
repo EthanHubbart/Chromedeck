@@ -2,7 +2,7 @@
    Attribute levels, point budgets and the hex perk trees (drawn as SVG).
    ========================================================================== */
 import { DATA, build, save } from "../store.js";
-import { perk, attrMeta, attrVal, perkLevel, perkGate, budgets, dependents, addPerkPoint, removePerkPoint, setAttr, fixPerkSlots } from "../rules.js";
+import { perk, attrMeta, attrVal, perkLevel, perkGate, budgets, dependents, addPerkPoint, removePerkPoint, setAttr, fixPerkSlots, reqsOf } from "../rules.js";
 import { $, esc, openSheet } from "../ui.js";
 import { renderAll } from "../app.js";
 
@@ -14,10 +14,11 @@ function layoutBranch(attr, br, b){
   const nodes=[], bands=[]; let y=0;
   tiers.forEach(tier=>{
     const inTier = P.filter(p=>p.tier===tier); if(!inTier.length) return;
-    const roots = inTier.filter(p=>!p.req || !inTier.find(q=>q.id===p.req));
+    const lp = p => reqsOf(p).find(r=>inTier.find(q=>q.id===r));   // layout parent: first parent in this tier
+    const roots = inTier.filter(p=>!lp(p));
     const clusters = roots.map(r=>{
       const rows=[[r]]; let frontier=[r];
-      for(;;){ const next=inTier.filter(p=>frontier.some(f=>f.id===p.req)); if(!next.length) break; rows.push(next); frontier=next; }
+      for(;;){ const next=inTier.filter(p=>frontier.some(f=>f.id===lp(p))); if(!next.length) break; rows.push(next); frontier=next; }
       const wrapped=[]; rows.forEach(row=>{ const chunks=Math.ceil(row.length/MAX_PER_ROW), size=Math.ceil(row.length/chunks); for(let i=0;i<row.length;i+=size) wrapped.push(row.slice(i,i+size)); });
       return {rows:wrapped, w:Math.max(...wrapped.map(r=>r.length))};
     });
@@ -31,7 +32,7 @@ function layoutBranch(attr, br, b){
     y += maxRows*ROW_H + BAND_PAD; bands.push({tier, top, bottom:y});
   });
   // edges (including links back to a core in an earlier band, same branch)
-  const edges=[]; nodes.forEach(n=>{ if(!n.p.req) return; const par=nodes.find(m=>m.p.id===n.p.req); if(par) edges.push({from:par,to:n}); });
+  const edges=[]; nodes.forEach(n=>{ reqsOf(n.p).forEach(r=>{ const par=nodes.find(m=>m.p.id===r); if(par) edges.push({from:par,to:n}); }); });
   return {nodes, edges, bands, h:y};
 }
 function hexPath(x,y,r){ const pts=[]; for(let k=0;k<6;k++){ const a=Math.PI/6+k*Math.PI/3; pts.push((x+r*Math.cos(a)).toFixed(1)+","+(y+r*Math.sin(a)).toFixed(1)); } return "M"+pts.join("L")+"Z"; }
@@ -112,10 +113,12 @@ function openPerk(id){
     <div class="detail">
       <div class="name">${esc(p.name)}</div>
       <div class="line"><span>${p.core?"Core perk":"Perk"} · ${p.max>1?`${p.max} levels`:"1 level"}${p.cost?` · ${p.cost} Relic pt${p.cost>1?"s":""}`:""}</span>${p.only?`<span>· only ${esc(p.only)}</span>`:""}</div>
-      ${p.req?`<div class="${perkLevel(b,p.req)?"okbox":"warnbox"}" style="margin-top:0">Requires ${esc(perk(p.req).name)}${perkLevel(b,p.req)?" ✓":""}</div>`:""}
-      ${!g.ok && (!p.req || perkLevel(b,p.req))?`<div class="warnbox" style="margin-top:0">${esc(g.why)}</div>`:""}
+      ${reqsOf(p).map(r=>`<div class="${perkLevel(b,r)?"okbox":"warnbox"}" style="margin-top:0">Requires ${esc(perk(r).name)}${perk(r).attr!==p.attr||perk(r).br!==p.br?` <small>(${esc(attrMeta(perk(r).attr).name)}${perk(r).attr===p.attr?", other branch":""})</small>`:""}${perkLevel(b,r)?" ✓":""}</div>`).join("")}
+      ${!g.ok && reqsOf(p).every(r=>perkLevel(b,r))?`<div class="warnbox" style="margin-top:0">${esc(g.why)}</div>`:""}
+      ${p.verified===false?`<div class="warnbox"><b>Open question:</b> ${esc(p.check||"")}</div>`:""}
       <div class="lvls">${lvls}</div>
       ${deps.length?`<p class="hint">Removing the last point also clears: ${esc(deps.map(d=>perk(d).name).join(", "))}.</p>`:""}
+      ${p.src?`<p class="hint" style="margin:0 0 6px"><a href="${esc(p.src)}" target="_blank" rel="noopener">Wiki page ↗</a></p>`:""}
       <div class="btnrow"><button class="btn pri" data-padd="${id}" ${(!g.ok||l>=p.max)?"disabled":""}>Add point</button><button class="btn warn" data-prem="${id}" ${l?"":"disabled"}>Remove point</button></div>
     </div>`);
 }

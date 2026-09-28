@@ -20,7 +20,7 @@ export const EXAMPLE_BUILDS = [{
   notes:"Imported from the old planning sheet. RAM Upgrade until COX-2 is available; Rippler until Raven. Combo: Sonic Shock → Overheat → Cyberware Malfunction → Short Circuit.",
   level:60, engineering:30, shardMode:"max", ccBonus:70,
   attrs:{body:15, reflexes:11, tech:20, int:20, cool:15},
-  perks:{eye_in_the_sky:2, forcekill_cypher:1, warning_explosion_hazard:1, optimization:1, proximate_propagation:1, encryption:1, subordination:1, hack_queue:2, data_recycler:1, feedback_loop:1, embedded_exploit:2, icepick:1, siphon:1, system_overwhelm:1, speculation:1, queue_acceleration:3, queue_prioritization:1, live_wire:1, queue_hack_root:1, blood_daemon:1, overclock:3, sublimation:1, race_against_mind:1, power_surge:1, queue_mastery:1, spillover:1,
+  perks:{eye_in_the_sky:1, forcekill_cypher:1, warning_explosion_hazard:1, optimization:1, proximate_propagation:1, encryption:1, subordination:1, hack_queue:2, data_recycler:1, feedback_loop:1, embedded_exploit:2, icepick:1, siphon:1, system_overwhelm:1, speculation:1, queue_acceleration:3, queue_prioritization:1, live_wire:1, queue_hack_root:1, blood_daemon:1, overclock:3, sublimation:1, race_against_mind:1, power_surge:1, queue_mastery:1, spillover:1,
     glutton_for_war:1, health_freak:2, all_things_cyber:2, renaissance_punk:1, chrome_constitution:1, driver_update:1, license_to_chrome:3, cyborg:1, extended_warranty:1,
     feline_footwork:1, small_target:1, blind_spot:1, killer_instinct:1, quick_getaway:1, ninjutsu:3, creeping_death:1, vanishing_act:1,
     painkiller:1, comeback_kid:1, adrenaline_rush:2, slippery:1, multitasker:1, dash:2,

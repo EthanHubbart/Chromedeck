@@ -64,7 +64,7 @@ export function validateData(d) {
   const pids = new Set(d.perks.map(p => p.id));
   for (const p of d.perks) {
     if (!p.id || !p.attr || !p.name || !Array.isArray(p.lv) || !p.max) return `Perk "${p.name || p.id || "?"}" needs id, attr, name, max and lv[].`;
-    if (p.req && !pids.has(p.req)) return `"${p.name}" requires unknown perk "${p.req}".`;
+    for (const r of (!p.req ? [] : Array.isArray(p.req) ? p.req : [p.req])) if (!pids.has(r)) return `"${p.name}" requires unknown perk "${r}".`;
     if (!d.attributes.find(a => a.id === p.attr)) return `"${p.name}" points at unknown attribute "${p.attr}".`;
   }
   const ids = new Set();
@@ -172,6 +172,8 @@ export function normalize() {
     if (typeof b.id !== "string") b.id = uid();
     for (const k in d) { if (b[k] === undefined && k !== "id") b[k] = clone(d[k]); }
     migrateFlags(b);
+    // perks: drop ids that no longer exist, and cap levels at the perk's current max (data can change)
+    if (b.perks) for (const id of Object.keys(b.perks)) { const p = DATA.perks.find(x => x.id === id); if (!p) delete b.perks[id]; else if (b.perks[id] > p.max) b.perks[id] = p.max; }
     b.equipped = b.equipped || {};
     DATA.slots.forEach(sl => { const n = slotCount(sl, b); const arr = (b.equipped[sl.id] || []).slice(0, n); while (arr.length < n) arr.push(null); b.equipped[sl.id] = arr.map(id => id && cw(id) ? id : null); });
   });
