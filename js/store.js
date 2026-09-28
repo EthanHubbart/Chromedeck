@@ -3,7 +3,7 @@
    localStorage key. Game data `DATA` = the shipped SEED + the user's edits,
    which are stored as differences (S.dataEdits), not a full copy.
    ======================================================================== */
-import { SEED, EXAMPLE_BUILDS } from "../data/index.js";
+import { SEED } from "../data/index.js";
 import { slotCount, cw } from "./rules.js";
 
 const KEY = "chromedeck.v1";
@@ -133,9 +133,8 @@ function hydrate(saved) {
     S = saved; S.dataEdits = err ? {} : edits;
     if (err) S.dataEditsSetAside = edits;
   } else {
+    // a fresh install starts empty: normalize() adds one blank "Build 1"
     S = { builds: [], active: null, playthrough: { shards: {} }, dataEdits: err ? {} : edits };
-    EXAMPLE_BUILDS.forEach(ex => { S.builds.push(Object.assign(newBuild(), clone(ex), { id: uid() })); });
-    S.active = S.builds[0].id;
   }
   normalize();
 }

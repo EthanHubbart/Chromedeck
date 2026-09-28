@@ -1,8 +1,9 @@
 /* ============================ System ============================
-   Backup & restore, installing the app, the game-data editor, and About.
+   Backup & restore, installing the app, offline pictures, the game-data editor, and About.
    ================================================================ */
 import { SEED } from "../../data/index.js";
 import { S, DATA, store, save, setData, resetData, validateData, hasEdits } from "../store.js";
+import * as pics from "../offline.js";
 
 /* Open questions to confirm in the game: every data entry marked verified:false, plus rules
    that aren't tied to one entry. */
@@ -47,6 +48,8 @@ export function renderSystem() {
 
   <div class="panel"><div class="ph"><h2>Install on your phone</h2></div><div class="pb">${install}</div></div>
 
+  <div class="panel"><div class="ph"><h2>Offline pictures</h2><span class="meta" id="picMeta"></span></div><div class="pb" id="picBody"><p class="hint" style="margin:0">Checking…</p></div></div>
+
   <div class="panel"><div class="ph"><h2>Game data</h2><span class="meta">${edited ? "with your edits" : "as shipped"}</span></div><div class="pb">
     <p class="hint" style="margin:0 0 8px">${esc(DATA.version)} · ${DATA.cyberware.length} cyberware · ${DATA.perks.length} perks · ${DATA.shards.length} shard sources · ${(DATA.missions || []).length} missions. Cyberware capacity costs came from the Cyberpunk wiki's 2.31 table; effect text is paraphrased. Quick fixes: open any implant in Character › Cyberware and tap Edit.</p>
     ${edited ? `<p class="hint" style="margin:0 0 8px">Your edits: ${esc(counts.join(" · "))}. Updates to everything else still come through.</p>` : ""}
@@ -67,6 +70,35 @@ export function renderSystem() {
     <p class="hint" style="margin:0">Game facts are checked against the <a href="https://cyberpunk.fandom.com/wiki/Cyberpunk_Wiki" target="_blank" rel="noopener">Cyberpunk Wiki</a>. Spot something wrong? Fix it in Game data or note it for the next update.</p>
   </div></div>`;
   $("#dRaw").value = JSON.stringify(DATA, null, 1);
+  renderPictures();
+}
+
+/* ---- offline pictures ---- */
+const mb = n => n >= 10 ? Math.round(n) + " MB" : n >= 1 ? n.toFixed(1) + " MB" : Math.max(0.1, n).toFixed(1) + " MB";
+let picProgress = null;   // last progress while a download runs
+async function renderPictures() {
+  const el = $("#picBody"); if (!el) return;
+  if (!pics.supported()) { el.innerHTML = `<p class="hint" style="margin:0">This browser can't keep pictures for offline use.</p>`; return; }
+  const st = await pics.status(); const used = await pics.usedMB();
+  if (!$("#picBody")) return;
+  $("#picMeta").textContent = `${st.saved}/${st.total} saved`;
+  const run = pics.isRunning() && picProgress;
+  el.innerHTML = `
+    <p class="hint" style="margin:0 0 8px">Pictures normally download the first time you open an item. Save them all at once on Wi-Fi so every picture shows without signal.${used ? ` Chromedeck uses about ${mb(used)} on this device right now.` : ""}</p>
+    ${run ? `<div class="prog one"><div><small>Downloading</small><b class="num">${picProgress.done}<span>/${picProgress.total}</span></b><i><em style="width:${picProgress.total ? Math.round(picProgress.done / picProgress.total * 100) : 0}%"></em></i>${picProgress.failed ? `<small class="bad">${picProgress.failed} failed, tap Save again later to retry</small>` : ""}</div></div>
+      <div class="btnrow"><button class="btn" id="picStop">Stop</button></div>`
+    : `<div class="btnrow">
+        <button class="btn pri" id="picSave" ${st.saved === st.total ? "disabled" : ""}>${st.saved === st.total ? "All pictures saved ✓" : st.saved ? `Save the other ${st.total - st.saved} (about ${mb(st.missingMB)})` : `Save all ${st.total} pictures (about ${mb(st.missingMB)})`}</button>
+        <button class="btn warn" id="picRemove" ${st.saved ? "" : "disabled"}>Remove saved pictures</button>
+      </div>`}`;
+}
+async function startPictures() {
+  picProgress = { done: 0, total: 0, failed: 0 };
+  const p = pics.saveAll(pr => { picProgress = pr; renderPictures(); });
+  renderPictures();
+  const res = await p;
+  if (res) toast(res.failed ? `Saved ${res.done - res.failed} pictures, ${res.failed} failed` : res.done < res.total ? "Stopped. Tap Save to carry on." : `Saved ${res.done} pictures (${mb(res.bytes / 1048576)})`, 3000);
+  renderPictures();
 }
 
 export function click(t) {
@@ -83,6 +115,11 @@ export function click(t) {
       const err = validateData(d); if (err) { $("#dMsg").innerHTML = `<div class="warnbox">${esc(err)}</div>`; return true; }
       setData(d); save(); renderAll(); toast("Data applied"); return true;
     }
+    case "picSave": startPictures(); return true;
+    case "picStop": pics.stop(); return true;
+    case "picRemove":
+      if (!confirm("Delete the pictures saved on this device? They'll download again when you open items.")) return true;
+      pics.removeAll().then(() => { renderPictures(); toast("Saved pictures removed"); }); return true;
     case "dReload": $("#dRaw").value = JSON.stringify(DATA, null, 1); $("#dMsg").innerHTML = ""; return true;
   }
   return false;
