@@ -62,6 +62,14 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
 - User edits to game data are stored in `S.dataEdits` as **diffs over SEED** (`{key:{set:{id:entry},del:[ids]}}` for id'd lists, `{key:{replace:value}}` otherwise), so data updates still reach users for everything they didn't edit. Old v1 saves with a full `dataOverride` are converted on load. If edits stop validating against new data, they're set aside (`S.dataEditsSetAside`) and the user is told.
 - UI position is kept in `S.ui` (`tab`, and `subs` per tab). v0.3.0 saves with a single `sub` or the old Wardrobe tab are migrated in `normalize()`.
 
+## Perk and cyberware data
+
+- Both were checked field by field against the wiki on 2026-09-28. Cyberware matched completely; perks had 13 prerequisite fixes and one level-count fix.
+- A perk's `req` is one id, a list (all required, per the wiki's "after unlocking A and B"), or null. Always read it through `reqsOf()` in `js/rules.js`. Every multi-parent perk bridges two neighbouring branches.
+- Entries the wiki contradicts itself on keep the app's value with `verified:false` and a `check` note, which shows in the perk's details. Don't "fix" those from the wiki without resolving the contradiction.
+- `get` on cyberware = where to get it, only when more specific than "Ripperdocs". `src` = wiki page.
+- `normalize()` caps saved perk levels at the current max and drops perks that no longer exist.
+
 ## Journal rules
 
 - Mission ids are the game's internal quest ids (the wiki's "BaseID"). Data comes from each mission's wiki infobox (previous/next quest, giver, district, rewards with "(missable)" flags); keep that as the source.

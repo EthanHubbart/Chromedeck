@@ -73,6 +73,8 @@ function openDetail(id, from) {
       ${it.req ? `<div class="req">Requires perk: ${esc(it.req)}</div>` : ""}
       <div class="eff">${esc(it.effect)}</div>
       ${it.notes ? `<div class="notes">${esc(it.notes)}</div>` : ""}
+      ${it.get ? `<div class="line"><span>Where to get it: <b>${esc(it.get)}</b></span></div>` : ""}
+      ${it.src ? `<p class="hint" style="margin:0 0 6px"><a href="${esc(it.src)}" target="_blank" rel="noopener">Wiki page ↗</a></p>` : ""}
       <div class="btnrow">
         ${inSlot ? `<button class="btn" data-swap="${from}">Swap</button><button class="btn warn" data-uninstall="${from}">Remove</button>` : `<button class="btn pri" data-install="${it.id}">Install</button>`}
         <button class="btn" data-edit="${it.id}">Edit</button>
