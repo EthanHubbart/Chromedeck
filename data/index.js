@@ -28,4 +28,3 @@ export const SEED = {
   apartments
 };
 
-export { EXAMPLE_BUILDS } from "./examples.js";

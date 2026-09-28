@@ -22,7 +22,8 @@ js/app.js             boot, navigation (TABS), header, event routing, update ban
 js/store.js           state `S`, game data `DATA`, storage, data-edit diffs, load/migrate/normalize, validateData
 js/rules.js           perk gates and budgets, capacity math
 js/journal.js         mission availability, branches, recommended order (plan), reordering, progress
-js/ui.js              $, esc, toast, the shared sheet, download/readFile, icons
+js/ui.js              $, esc, toast, the shared sheet, download/readFile, icons, wikiImg/wikiThumb
+js/offline.js         System › Offline pictures: save every wiki picture to the image cache at once (allPictures, saveAll)
 js/views/weapons.js   Gear › Weapons (list, filters, iconic tracking, detail); exports weaponsFrom() for the Journal
 js/views/collection.js  Collection › Vehicles; exports vehiclesFrom() for the Journal and vehicleTally()
 js/views/collectibles.js  Collection › Collectibles (Tarot, Cyberpsychos, Airdrops, Relic switch) and Homes; KINDS config, tally()
@@ -33,7 +34,6 @@ data/missions.js      missionSections + missions (Main Jobs, Side Jobs incl. the
 data/weapons.js       every weapon (197, 114 iconic) with stats, where to get it, mission links, picture URL
 data/vehicles.js      every ownable car and motorcycle (87) with how to get it, Autofixer price/requirements, specs
 data/collectibles.js  Tarot graffiti (26), Cyberpsycho Sightings (17), PL airdrops (16 + 3 treasures), Relic terminals (9), apartments (6 + 4 romance)
-data/examples.js      starter builds, used only when there are no saved builds
 icons/                icon.svg (source) and rendered PNGs
 chromedeck.html       the original single-file planner, kept so old saves can be exported from it; not part of the app
 ```
@@ -59,13 +59,16 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
 - **No game art in the repo.** The avatar is a stylized male/female V silhouette with the same equipment slots as the game.
 - Item pictures (mainly clothing) are loaded at view time from the Cyberpunk wiki URL stored on the entry (`img`). They're cached on the device for offline use, never committed. Each one is credited "Image: Cyberpunk Wiki / CD PROJEKT RED". If an image fails to load, show a slot icon.
 - Always render them with `wikiImg()` / `wikiThumb()` from `js/ui.js`. Fandom's image server answers requests carrying another site's referrer with a "not found" placeholder, so the page sets `<meta name="referrer" content="no-referrer">` and images load with `referrerpolicy="no-referrer"`. `wikiThumb()` asks for a 400px-wide copy (`/scale-to-width-down/400`), a fraction of the full file.
-- The service worker (`wikiImage()` in `sw.js`) fetches them with CORS, keeps only real pictures (never error pages), and gives up after 15 s. Bump `IMAGES` in `sw.js` if bad copies ever get cached.
+- The service worker (`wikiImage()` in `sw.js`) fetches them with CORS, keeps only real pictures (never error pages), and gives up after 15 s. Bump `IMAGES` in `sw.js` if bad copies ever get cached (and `CACHE` in `js/offline.js`, which must match).
+- System › Offline pictures (`js/offline.js`) downloads every picture at once into that cache, 4 at a time, skipping ones already saved. A new list with pictures must be added to `AVG_KB` there (rough KB per picture, for the size estimate). At 0.10.0: 308 pictures, about 7 MB.
+- Clothing pages (`Infobox Clothing`, 1531 pages) have `imagef` and `imagem`: renders of the item alone for each body type, 200×200 with a transparent background, about 12 KB each.
 - This relies on CD PROJEKT RED's [Fan Content Guidelines](https://www.cdprojektred.com/en/fan-content). The app must stay free and non-commercial, and shows a footer disclaimer that it's an unofficial fan project.
 
 ## State and storage
 
 - One `localStorage` key, **`chromedeck.v1`**, holds the whole state. Access it only through `js/store.js`, which falls back to memory when storage is blocked.
 - Mutations autosave. Keep export/import of a full JSON backup, because storage on iPhone can still be lost.
+- A fresh install starts with one blank "Build 1" (no example builds; the owner's old sheet builds were removed in 0.10.0).
 - Per-build data (attributes, perks, equipped cyberware, outfit) lives on the build. Per-playthrough progress (shards, missions, missables, vehicles, collected clothing) lives under `playthrough`.
 - New fields get defaults in normalization, which runs after load, import and data edits. For shape changes, write a one-time migration (see `migrateFlags()` in `chromedeck.html`). Don't change the storage key.
 - User edits to game data are stored in `S.dataEdits` as **diffs over SEED** (`{key:{set:{id:entry},del:[ids]}}` for id'd lists, `{key:{replace:value}}` otherwise), so data updates still reach users for everything they didn't edit. Old v1 saves with a full `dataOverride` are converted on load. If edits stop validating against new data, they're set aside (`S.dataEditsSetAside`) and the user is told.
