@@ -351,3 +351,51 @@ select.sel{background:var(--panel2);border:1px solid var(--line2);color:var(--te
 .drow.full .dn{color:var(--cyan)}
 .drow.full em{background:var(--cyan)}
 .drow:hover .dl,.drow:focus-visible .dl{color:var(--cyan)}
+
+/* ---------- saves ---------- */
+.savestrip{display:flex;align-items:center;gap:10px;justify-content:space-between;border:1px solid var(--line);padding:6px 6px 6px 10px;margin:8px 0 2px}
+.savestrip span{min-width:0}
+.savestrip b{display:block;font-size:15px;line-height:1.15}
+.savestrip small{display:block;font-size:12px;color:var(--muted);line-height:1.2}
+.savestrip .btn{flex-shrink:0}
+.saverow{border:1px solid var(--line);padding:8px 10px;margin-bottom:8px}
+.saverow.on{border-color:var(--cyan-dim)}
+.saverow b{font-size:16px}
+.saverow small{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.saverow .btnrow{margin-top:6px}
+
+/* ---------- wardrobe ---------- */
+.mmain img.th{width:46px;height:46px;flex:0 0 46px;object-fit:contain;background:#0c141a;border:1px solid var(--line)}
+.mchk.vcount{display:grid;place-items:center;font-size:12px;color:var(--muted);font-weight:600}
+.mchk.vcount b{color:var(--yellow);font-size:14px}
+.vgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(104px,1fr));gap:8px;margin-bottom:8px}
+.vtile{border:1px solid var(--line);padding:4px;display:flex;flex-direction:column;gap:4px}
+.vtile.own{border-color:var(--yellow)}
+.vtile .vpic{height:92px;display:grid;place-items:center;background:radial-gradient(ellipse at center,rgba(91,231,242,.08),transparent 70%)}
+.vtile .vpic img{max-width:88px;max-height:88px}
+.vtile small{font-size:11.5px;line-height:1.15;color:var(--muted);min-height:2.3em}
+.vtile .vown{min-height:36px;border:1px solid var(--line2);font-size:12px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.vtile.own .vown{background:var(--yellow);color:#111;border-color:var(--yellow)}
+.vtile .btn{min-height:36px;padding:4px}
+.wimg.cloth img{max-height:200px}
+.orow{display:flex;gap:6px;align-items:center;margin-bottom:8px}
+.orow select{flex:1;min-width:0;min-height:40px;background:var(--panel2);color:var(--text);border:1px solid var(--line2);padding:0 8px}
+.orow .btn{padding:6px 8px}
+.doll{display:grid;grid-template-columns:1fr 104px 1fr;gap:6px;margin-top:6px}
+.doll .col{display:flex;flex-direction:column;gap:8px}
+.doll .mid{display:flex;align-items:center;justify-content:center}
+.doll .sil{width:100px;height:250px}
+.wslot{display:block;width:100%;text-align:left}
+.wslot small{display:block;font-size:10.5px;letter-spacing:.1em;text-transform:uppercase;color:var(--cyan);margin-bottom:2px}
+.wslot .box{height:84px;border:1px solid var(--line2);background:radial-gradient(ellipse at center,rgba(91,231,242,.09),transparent 70%);display:grid;place-items:center;clip-path:polygon(0 0,calc(100% - 8px) 0,100% 8px,100% 100%,8px 100%,0 calc(100% - 8px))}
+.wslot.own .box{border-color:var(--yellow)}
+.wslot .box img{max-width:80px;max-height:80px}
+.wslot .empty{color:var(--faint);font-size:22px}
+.wslot b{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;font-size:12px;font-weight:600;line-height:1.15;margin-top:3px}
+.wslot em{display:block;font-style:normal;font-size:11px;color:var(--muted)}
+.wslot.own em{color:var(--yellow)}
+.outfit1{margin-top:10px}
+.outfit1 .box{height:64px}
+.nopic{display:grid;place-items:center;color:var(--faint);font-size:20px}
+.nopic.th{width:46px;height:46px;flex:0 0 46px;border:1px solid var(--line)}
+.wimg .nopic{padding:28px 0 20px;font-size:13px}.wimg .nopic::after{content:" picture unavailable offline";margin-left:4px}

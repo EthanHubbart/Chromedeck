@@ -4,6 +4,7 @@
 import { SEED } from "../../data/index.js";
 import { S, DATA, store, save, setData, resetData, validateData, hasEdits } from "../store.js";
 import * as pics from "../offline.js";
+import { saveStrip } from "./saves.js";
 
 /* Open questions to confirm in the game: every data entry marked verified:false, plus rules
    that aren't tied to one entry. */
@@ -14,7 +15,8 @@ function checksHtml() {
   const rows = [
     ...GENERAL_CHECKS.map(c => ({ label: "Perk rule", text: c.text, attr: c.perk ? `data-perk="${c.perk}"` : "" })),
     ...DATA.perks.filter(p => p.verified === false).map(p => ({ label: "Perk · " + p.name, text: p.check, attr: `data-perk="${p.id}"` })),
-    ...(DATA.missions || []).filter(m => m.verified === false).map(m => ({ label: "Mission · " + m.name, text: m.check, attr: `data-mission="${m.id}"` }))
+    ...(DATA.missions || []).filter(m => m.verified === false).map(m => ({ label: "Mission · " + m.name, text: m.check, attr: `data-mission="${m.id}"` })),
+    ...(DATA.clothing || []).filter(c => c.verified === false).map(c => ({ label: "Clothing · " + c.name, text: c.check, attr: `data-cwitem="${c.id}"` }))
   ];
   return `<div class="panel"><div class="ph"><h2>To check in game</h2><span class="meta">${rows.length} open</span></div><div class="pb">
     <p class="hint" style="margin:0 0 6px">Things the wiki doesn't settle. Tell me what you see and I'll fix the data.</p>
@@ -38,6 +40,9 @@ export function renderSystem() {
       : `<p class="hint" style="margin:0">On iPhone: open this page in Safari → Share → <b>Add to Home Screen</b>. On a PC: use the install icon in Chrome or Edge's address bar, or just bookmark it.</p>`;
 
   $("#v-system").innerHTML = `
+  <div class="panel"><div class="ph"><h2>Saves</h2><span class="meta">${S.saves.length} of 5</span></div><div class="pb">${saveStrip()}
+    <p class="hint" style="margin:6px 0 0">Start a new playthrough, switch between up to 5, or rename one. Builds are shared by all saves.</p></div></div>
+
   <div class="panel"><div class="ph"><h2>Backup</h2><span class="meta">${S.builds.length} build${S.builds.length > 1 ? "s" : ""}</span></div><div class="pb">
     <p class="hint" style="margin:0 0 8px">${persistent ? "Everything saves on this device automatically. Export a backup now and then — it's the only copy if the device or browser clears its storage." : "This browser isn't allowing storage, so nothing survives closing it. Export a backup to keep your work."}</p>
     <div class="btnrow"><button class="btn pri" id="sExport">Export everything</button><button class="btn" id="sImport">Restore a backup</button></div>
@@ -69,7 +74,8 @@ export function renderSystem() {
     <p class="hint" style="margin:0 0 6px">Chromedeck is an unofficial, free fan project for Cyberpunk 2077 (patch 2.31, Phantom Liberty included). It isn't affiliated with or endorsed by CD PROJEKT RED. Cyberpunk 2077 and related names are trademarks of CD PROJEKT S.A.</p>
     <p class="hint" style="margin:0">Game facts are checked against the <a href="https://cyberpunk.fandom.com/wiki/Cyberpunk_Wiki" target="_blank" rel="noopener">Cyberpunk Wiki</a>. Spot something wrong? Fix it in Game data or note it for the next update.</p>
   </div></div>`;
-  $("#dRaw").value = JSON.stringify(DATA, null, 1);
+  // the full data is large (clothing alone is ~0.5 MB), so only fill the editor when it's opened
+  $("details.adv").addEventListener("toggle", e => { if (e.target.open && !$("#dRaw").value) $("#dRaw").value = JSON.stringify(DATA, null, 1); });
   renderPictures();
 }
 

@@ -16,9 +16,10 @@ import * as weapons from "./views/weapons.js";
 import * as collection from "./views/collection.js";
 import * as collectibles from "./views/collectibles.js";
 import * as overview from "./views/overview.js";
-import { renderSoon } from "./views/soon.js";
+import * as saves from "./views/saves.js";
+import * as wardrobe from "./views/wardrobe.js";
 
-export const APP_VERSION = "0.10.0";   // keep in step with CACHE in sw.js
+export const APP_VERSION = "0.12.0";   // keep in step with CACHE in sw.js
 
 /* ---------- navigation ---------- */
 /* Bottom tabs, left to right. A tab with `subs` shows sub-tabs across the top
@@ -32,12 +33,12 @@ const TABS = [
 ];
 const VIEWS = {
   cyberware: cyber.renderCyberware, perks: perks.renderPerks, capacity: capacity.renderCapacity, builds: builds.renderBuilds,
-  weapons: weapons.renderWeapons, wardrobe: () => renderSoon("wardrobe"),
+  weapons: weapons.renderWeapons, wardrobe: wardrobe.renderWardrobe,
   overview: overview.renderOverview, vehicles: collection.renderVehicles, collectibles: collectibles.renderCollectibles, homes: collectibles.renderHomes,
   journal: journal.renderJournal,
   system: system.renderSystem
 };
-const HANDLERS = [cyber, perks, capacity, builds, journal, weapons, collection, collectibles, overview, system];
+const HANDLERS = [saves, cyber, perks, capacity, builds, journal, weapons, wardrobe, collection, collectibles, overview, system];
 
 const curTab = () => TABS.find(t => t.id === S.ui.tab) || TABS[0];
 const curSub = () => { const t = curTab(); const s = S.ui.subs[t.id]; return t.subs.some(([id]) => id === s) ? s : t.subs[0][0]; };

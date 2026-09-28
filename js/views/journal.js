@@ -8,6 +8,8 @@ import { mission, isDone, isAvailable, isMissed, isMain, blockers, leadsTo, lock
 import { $, esc, toast, openSheet, sheetOpen } from "../ui.js";
 import { weaponsFrom } from "./weapons.js";
 import { vehiclesFrom } from "./collection.js";
+import { clothesFrom } from "./wardrobe.js";
+import { saveStrip } from "./saves.js";
 
 const TYPE = { main: "Main Job", side: "Side Job", gig: "Gig" };
 const PATH = { hellman: "Anders Hellman thread", evelyn: "Evelyn Parker thread", alt: "Voodoo Boys (Evelyn thread, part 2)", takemura: "Goro Takemura thread" };
@@ -20,7 +22,6 @@ const LANES = [
 ];
 const laneOf = m => LANES.find(l => l.paths.includes(m.path));
 const CHOICES = {
-  lifepath: { label: "Lifepath", opts: [["corpo", "Corpo"], ["nomad", "Nomad"], ["streetkid", "Streetkid"]] },
   pl: { label: "Phantom Liberty: at Firestarter you sided with", opts: [["", "Not yet"], ["songbird", "Songbird"], ["reed", "Reed"]] },
   plEnd: { label: "At The Killing Moon you", opts: [["", "Not yet"], ["surrender", "Surrendered her"], ["escape", "Helped her escape"]] }
 };
@@ -115,8 +116,9 @@ export function renderJournal() {
   $("#v-journal").innerHTML = `
   <div class="panel"><div class="ph"><h2>Your run</h2><span class="meta">${P.length + lost.length} missions</span></div><div class="pb">
     <div class="prog">${stat("Main story", pr.storyDone, pr.storyTotal)}${stat("Side jobs", pr.sideDone, pr.sideTotal, pr.sideMissed ? `<small class="bad">${pr.sideMissed} missed</small>` : "")}${stat("Gigs", pr.gigDone, pr.gigTotal)}${stat("Endings", pr.pathDone, pr.pathTotal)}</div>
-    ${seg("lifepath")}${seg("pl")}${ch.pl === "songbird" ? seg("plEnd") : ""}
-    ${!ch.lifepath ? `<p class="hint" style="margin:6px 0 0">Pick your lifepath so the right lifepath jobs count.</p>` : ""}
+    ${saveStrip()}
+    ${seg("pl")}${ch.pl === "songbird" ? seg("plEnd") : ""}
+    ${!ch.lifepath ? `<p class="hint" style="margin:6px 0 0">Set your lifepath (Saves › Edit) so the right lifepath jobs count.</p>` : ""}
   </div></div>
 
   <div class="panel"><div class="ph"><h2>Up next</h2><span class="meta">${avail.length} available now</span></div><div class="pb">
@@ -228,6 +230,7 @@ function openMission(id) {
       ${items ? `<div class="k-h">Rewards & unique items</div><ul class="ilist">${items}</ul>${(m.items || []).some(i => i.miss) ? `<p class="hint" style="margin:0 0 8px">Missable items can only be picked up during this mission.</p>` : ""}` : ""}
       ${(() => { const ws = weaponsFrom(m.id).filter(w => w.iconic); return ws.length ? `<div class="k-h">Iconic weapons here</div><p style="margin:0 0 8px">${ws.map(w => `<button class="lnk" data-weapon="${w.id}">${esc(w.name)}</button>${S.playthrough.weapons[w.id] ? " ✓" : w.miss && !w.lowe ? " ⚠" : ""}`).join(", ")}</p>` : ""; })()}
       ${(() => { const vs = vehiclesFrom(m.id); return vs.length ? `<div class="k-h">Vehicles here</div><p style="margin:0 0 8px">${vs.map(v => `<button class="lnk" data-vehicle="${v.id}">${esc(v.name)}</button>${S.playthrough.vehicles[v.id] ? " ✓" : v.dep ? " ⚠" : ""}`).join(", ")}</p>` : ""; })()}
+      ${(() => { const cs = clothesFrom(m.id).filter(c => !c.temp); return cs.length ? `<div class="k-h">Clothing here</div><p style="margin:0 0 8px">${cs.map(c => `<button class="lnk" data-cwitem="${c.id}">${esc(c.name)}</button>${S.playthrough.clothes[c.id] ? " ✓" : c.miss ? " ⚠" : ""}`).join(", ")}</p>` : ""; })()}
       ${reqNames.length ? `<div class="k-h">${rq.any.length && !rq.all.length ? "Follows one of" : m.type === "gig" && !(m.after || []).length ? `Unlocks after tier ${m.tier - 1}` : "Requires"}</div><p style="margin:0 0 8px">${plist(reqNames)}</p>` : ""}
       ${anc ? `<div class="k-h">Opens up</div><p style="margin:0 0 8px">After ${plist([anc])} <span class="hint">(estimated: the wiki lists no prerequisite, and this is when its area opens)</span></p>` : ""}
       ${m.ext && m.ext.length ? `<div class="k-h">Also needs</div><p style="margin:0 0 8px">${esc(m.ext.join("; "))} <span class="hint">(not tracked in the app yet)</span></p>` : ""}

@@ -11,9 +11,10 @@ import { missions, missionSections } from "./missions.js";
 import { weapons } from "./weapons.js";
 import { vehicles } from "./vehicles.js";
 import { tarot, cyberpsychos, airdrops, relicTerminals, apartments } from "./collectibles.js";
+import { clothing, clothingIntrinsics } from "./clothing.js";
 
 export const SEED = {
-  version: "2.31 seed 2026-09-28 · collectibles",
+  version: "2.31 seed 2026-09-28 · clothing",
   ...core,
   perks,
   cyberware,
@@ -25,6 +26,8 @@ export const SEED = {
   cyberpsychos,
   airdrops,
   relicTerminals,
-  apartments
+  apartments,
+  clothing,
+  clothingIntrinsics
 };
 

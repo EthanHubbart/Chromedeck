@@ -4,19 +4,22 @@
    without signal. Pictures already saved are skipped, so stopping and starting
    again carries on where it left off.
    ========================================================================= */
-import { DATA } from "./store.js";
+import { DATA, S } from "./store.js";
 import { wikiThumb } from "./ui.js";
 
 const CACHE = "chromedeck-images-2";   // must match IMAGES in sw.js
 const AT_ONCE = 4;                     // downloads in parallel
 // rough size of one picture per list (KB), measured on the wiki at the reduced width; only for the estimate
-const AVG_KB = { weapons: 8, vehicles: 30, tarot: 120 };
+const AVG_KB = { weapons: 8, vehicles: 30, tarot: 120, clothing: 12 };
 
 /* Every picture URL the app shows, as it asks for it (the reduced-width copy).
    New lists with pictures get added here. */
 function pictures() {
   const out = new Map();   // url -> list key
-  for (const k of Object.keys(AVG_KB)) for (const x of DATA[k] || []) if (x.img) out.set(wikiThumb(x.img), k);
+  for (const k of ["weapons", "vehicles", "tarot"]) for (const x of DATA[k] || []) if (x.img) out.set(wikiThumb(x.img), k);
+  // clothing: the renders for the current save's body type (both when it isn't set); same URL as js/views/wardrobe.js picUrl()
+  const bodies = S.playthrough.v.body ? [S.playthrough.v.body] : ["f", "m"];
+  for (const c of DATA.clothing || []) for (const b of bodies) out.set(`https://static.wikia.nocookie.net/cyberpunk/images/${c[b]}/revision/latest/scale-to-width-down/400`, "clothing");
   return out;
 }
 export const allPictures = () => [...pictures().keys()];
