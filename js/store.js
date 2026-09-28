@@ -73,6 +73,17 @@ export function validateData(d) {
     if (ids.has(c.id)) return `Duplicate id "${c.id}".`; ids.add(c.id);
     if (!d.slots.find(s => s.id === c.slot)) return `"${c.name}" points at unknown slot "${c.slot}".`;
   }
+  // missions are optional in hand-edited data (older exports don't have them)
+  if (d.missions !== undefined) {
+    if (!Array.isArray(d.missions) || !Array.isArray(d.missionSections)) return "missions and missionSections must be lists.";
+    const secs = new Set(d.missionSections.map(s => s.id)), mids = new Set();
+    for (const m of d.missions) {
+      if (!m.id || !m.name || !m.type || !m.sec) return `Mission "${m.name || m.id || "?"}" needs id, name, type and sec.`;
+      if (mids.has(m.id)) return `Duplicate mission id "${m.id}".`; mids.add(m.id);
+      if (!secs.has(m.sec)) return `"${m.name}" points at unknown section "${m.sec}".`;
+    }
+    for (const m of d.missions) for (const r of [...(m.after || []), ...(m.any || [])]) if (!mids.has(r)) return `"${m.name}" requires unknown mission "${r}".`;
+  }
   return null;
 }
 
@@ -142,6 +153,11 @@ function migrateFlags(b) {
 export function normalize() {
   if (!S.playthrough) S.playthrough = { shards: {} };
   if (!S.playthrough.shards) S.playthrough.shards = {};
+  const P = S.playthrough;
+  if (!P.missions || typeof P.missions !== "object") P.missions = {};          // {missionId: timestamp done}
+  if (!P.choices) P.choices = { lifepath: null, pl: null, plEnd: null };     // story branches taken this run
+  if (!Array.isArray(P.order)) P.order = [];                                // user's custom mission order (ids), empty = recommended
+  if (DATA.missions) { const ok = new Set(DATA.missions.map(m => m.id)); for (const id in P.missions) if (!ok.has(id)) delete P.missions[id]; P.order = P.order.filter(id => ok.has(id)); }
   if (!S.dataEdits) S.dataEdits = {};
   // UI position. v0.3.0 kept one `sub` (Character only) and had Wardrobe as its own tab.
   if (!S.ui) S.ui = { tab: "character" };
@@ -149,6 +165,7 @@ export function normalize() {
   delete S.ui.sub;
   if (S.ui.tab === "wardrobe") { S.ui.tab = "gear"; S.ui.subs.gear = "wardrobe"; }
   if (!UI_TABS.includes(S.ui.tab)) S.ui.tab = "character";
+  if (!S.ui.journal) S.ui.journal = { hideDone: true };
   if (!S.builds.length) { S.builds.push(newBuild("Build 1")); }
   const d = newBuild();
   S.builds.forEach(b => {

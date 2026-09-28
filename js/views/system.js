@@ -29,7 +29,7 @@ export function renderSystem() {
   <div class="panel"><div class="ph"><h2>Install on your phone</h2></div><div class="pb">${install}</div></div>
 
   <div class="panel"><div class="ph"><h2>Game data</h2><span class="meta">${edited ? "with your edits" : "as shipped"}</span></div><div class="pb">
-    <p class="hint" style="margin:0 0 8px">${esc(DATA.version)} · ${DATA.cyberware.length} cyberware · ${DATA.perks.length} perks · ${DATA.shards.length} shard sources. Cyberware capacity costs came from the Cyberpunk wiki's 2.31 table; effect text is paraphrased. Quick fixes: open any implant in Character › Cyberware and tap Edit.</p>
+    <p class="hint" style="margin:0 0 8px">${esc(DATA.version)} · ${DATA.cyberware.length} cyberware · ${DATA.perks.length} perks · ${DATA.shards.length} shard sources · ${(DATA.missions || []).length} missions. Cyberware capacity costs came from the Cyberpunk wiki's 2.31 table; effect text is paraphrased. Quick fixes: open any implant in Character › Cyberware and tap Edit.</p>
     ${edited ? `<p class="hint" style="margin:0 0 8px">Your edits: ${esc(counts.join(" · "))}. Updates to everything else still come through.</p>` : ""}
     ${S.dataEditsSetAside ? `<div class="warnbox">Some older data edits didn't fit this version and were set aside. Export everything to keep a copy of them.</div>` : ""}
     <div class="btnrow"><button class="btn" id="dExport">Export data</button><button class="btn" id="dImport">Import data</button><button class="btn warn" id="dReset" ${edited ? "" : "disabled"}>Undo all edits</button></div>

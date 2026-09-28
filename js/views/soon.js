@@ -10,11 +10,6 @@ const PLANS = {
     lead: "Every weapon, with iconics flagged so you can check them off as you find them.",
     items: ["Stats and effects as the game shows them", "Iconic weapons: where and how to get each one, and whether it's missable", "Track which iconics you own", "Filter by type, class and Tech / Power / Smart"]
   },
-  journal: {
-    title: "Journal", next: "Next up",
-    lead: "Every Main Job, Side Job and Gig, in a recommended order that keeps story flow and protects missable content.",
-    items: ["Check off missions as you go; the order re-plans itself", "Points of no return spelled out before you hit them", "Unique items and rewards tied to each mission", "Drag to reorder, with a warning if you'd miss something", "Phantom Liberty included"]
-  },
   collection: {
     title: "Collection", next: "Planned",
     lead: "Everything collectible, with where and how to get it.",

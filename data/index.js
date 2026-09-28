@@ -7,12 +7,15 @@
 import { core } from "./core.js";
 import { perks } from "./perks.js";
 import { cyberware } from "./cyberware.js";
+import { missions, missionSections } from "./missions.js";
 
 export const SEED = {
-  version: "2.31 seed 2026-09-04 · perks",
+  version: "2.31 seed 2026-09-28 · main jobs",
   ...core,
   perks,
-  cyberware
+  cyberware,
+  missionSections,
+  missions
 };
 
 export { EXAMPLE_BUILDS } from "./examples.js";

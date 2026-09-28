@@ -21,9 +21,11 @@ css/                  tokens.css (colors, shape), app.css (components)
 js/app.js             boot, navigation (TABS), header, event routing, update banner; APP_VERSION
 js/store.js           state `S`, game data `DATA`, storage, data-edit diffs, load/migrate/normalize, validateData
 js/rules.js           perk gates and budgets, capacity math
+js/journal.js         mission availability, branches, recommended order (plan), reordering, progress
 js/ui.js              $, esc, toast, the shared sheet, download/readFile, icons
 js/views/*.js         one module per screen: export a render function plus optional click/input/change handlers that return true when handled
-data/index.js         assembles SEED from core.js, perks.js, cyberware.js; holds the data `version`
+data/index.js         assembles SEED from core.js, perks.js, cyberware.js, missions.js; holds the data `version`
+data/missions.js      missionSections + missions (Main Jobs so far); field meanings are in its header comment
 data/examples.js      starter builds, used only when there are no saved builds
 icons/                icon.svg (source) and rendered PNGs
 chromedeck.html       the original single-file planner, kept so old saves can be exported from it; not part of the app
@@ -60,6 +62,15 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
 - User edits to game data are stored in `S.dataEdits` as **diffs over SEED** (`{key:{set:{id:entry},del:[ids]}}` for id'd lists, `{key:{replace:value}}` otherwise), so data updates still reach users for everything they didn't edit. Old v1 saves with a full `dataOverride` are converted on load. If edits stop validating against new data, they're set aside (`S.dataEditsSetAside`) and the user is told.
 - UI position is kept in `S.ui` (`tab`, and `subs` per tab). v0.3.0 saves with a single `sub` or the old Wardrobe tab are migrated in `normalize()`.
 
+## Journal rules
+
+- Mission ids are the game's internal quest ids (the wiki's "BaseID"). Data comes from each mission's wiki infobox (previous/next quest, giver, district, rewards with "(missable)" flags); keep that as the source.
+- `after` = all required, `any` = one of these is enough. Wiki "previous quest" lists mean either, depending on the mission: check the page before deciding.
+- Story branches are `branch:[choice, value]`, driven by `S.playthrough.choices` (lifepath, pl, plEnd). Checking off a branch mission sets the choice.
+- The point-of-no-return mission (`pnr`) only affects the recommended order and warnings. Availability ("Locked / Available") uses the game's real requirements only.
+- Progress: done missions in `S.playthrough.missions` ({id: timestamp}); a custom order in `S.playthrough.order` (empty = recommended).
+- "Done, plus everything before it" marks the mission's transitive requirements, never unrelated side content.
+
 ## UI conventions
 
 - Mobile first: design at ~390px wide, bottom navigation, and tap targets of at least 44px. It should also look right on a PC.
@@ -70,7 +81,7 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
 ## Roadmap
 
 1. **Foundation (done):** multi-file PWA, design system, and a port of the existing planner (capacity, cyberware, perks, builds, shards) with the data moved to `data/`. Hosting is still pending: GitHub Pages needs the repo to be public.
-2. **Missions and missables:** every Main Job, Side Job and Gig (base game and Phantom Liberty), with:
+2. **Missions and missables:** every Main Job, Side Job and Gig (base game and Phantom Liberty). Main Jobs are done (batch 1, 64 missions); Side Jobs and Gigs are next. Features:
    - a recommended order for story flow and missable safety, which updates as missions are checked off,
    - manual reordering that warns about risks,
    - the unique items tied to each mission,
