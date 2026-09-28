@@ -1,8 +1,8 @@
-/* ============================ Collection ============================
-   Vehicles for now: every ownable car and motorcycle, owned tracking,
-   how to get each one (mission links, Autofixer price and requirements).
-   More trackers (Tarot, Cyberpsycho Sightings, airdrops…) join here later.
-   ==================================================================== */
+/* ============================ Collection › Vehicles ============================
+   Every ownable car and motorcycle, owned tracking, how to get each one
+   (mission links, Autofixer price and requirements). The other Collection
+   screens live in overview.js and collectibles.js.
+   ============================================================================== */
 import { S, DATA, save } from "../store.js";
 import { mission, isDone } from "../journal.js";
 import { $, esc, toast, openSheet, sheetOpen } from "../ui.js";
@@ -34,11 +34,13 @@ function row(v) {
     <button class="mmain" data-vehicle="${v.id}"><span class="nm">${esc(v.name)}<small>${sub}</small></span><span class="tags">${tags(v)}</span></button></div>`;
 }
 
-export function renderCollection() {
+export function vehicleTally() { const all = (DATA.vehicles || []).filter(applies); return { done: all.filter(v => owned(v.id)).length, total: all.length }; }
+
+export function renderVehicles() {
   const U = S.ui.vehicles; const all = (DATA.vehicles || []).filter(applies);
   const got = all.filter(v => owned(v.id)).length; const pct = all.length ? Math.round(got / all.length * 100) : 0;
   const choice = all.filter(v => v.dep && !owned(v.id)).length;
-  $("#v-collection").innerHTML = `
+  $("#v-vehicles").innerHTML = `
   <div class="panel"><div class="ph"><h2>Vehicles</h2><span class="meta">${all.filter(v => v.kind === "car").length} cars · ${all.filter(v => v.kind === "bike").length} motorcycles</span></div><div class="pb">
     <div class="prog one"><div><small>Owned</small><b class="num">${got}<span>/${all.length}</span></b><i><em style="width:${pct}%"></em></i></div></div>
     ${choice ? `<p class="hint" style="margin:4px 0 0">⚠ ${choice} depend on a choice in their mission — check the details before you play it.</p>` : ""}
@@ -49,9 +51,6 @@ export function renderCollection() {
     <div class="chips" role="group" aria-label="How you get it">${[["all", "Any source"], ["reward", "Mission rewards"], ["buy", "Autofixer"]].map(([k, l]) => `<button class="chip ${U.src === k ? "on" : ""}" data-vsrc="${k}" aria-pressed="${U.src === k}">${l}</button>`).join("")}</div>
     <div class="field" style="padding-top:0"><div class="k">Hide what I own</div><div class="v"><button class="tog ${U.hideOwned ? "on" : ""}" id="vHide" aria-pressed="${!!U.hideOwned}" aria-label="Hide owned vehicles"></button></div></div>
     <div id="vList"></div>
-  </div></div>
-  <div class="panel soon"><div class="ph"><h2>Coming to Collection</h2><span class="meta"><span class="pill on">Planned</span></span></div><div class="pb">
-    <ul class="plan"><li>Tarot graffiti, Cyberpsycho Sightings, Phantom Liberty airdrops and Relic terminals</li><li>Apartments, romances and endings</li><li>A completion dashboard across everything</li></ul>
   </div></div>
   <p class="hint">Autofixer is Muamar Reyes's car-dealing netpage; more cars appear on it as your Street Cred rises. Pictures: Cyberpunk Wiki / CD PROJEKT RED.</p>`;
   renderList();
@@ -92,7 +91,7 @@ function openVehicle(id) {
     </div>`);
 }
 
-function refresh(id) { save(); renderCollection(); if (id && sheetOpen()) openVehicle(id); }
+function refresh(id) { save(); renderVehicles(); if (id && sheetOpen()) openVehicle(id); }
 
 export function click(t) {
   const ds = t.dataset;

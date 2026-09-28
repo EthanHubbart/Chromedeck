@@ -1,15 +1,15 @@
 /* Service worker: keeps Chromedeck working offline.
    Bump CACHE on every release (match APP_VERSION in js/app.js) and add any new
    file to APP_FILES, or installed copies keep serving the old version. */
-const CACHE = "chromedeck-0.8.0";
+const CACHE = "chromedeck-0.9.0";
 const FONTS = "chromedeck-fonts";
 const IMAGES = "chromedeck-images";   // wiki images, cached as they're viewed
 const APP_FILES = [
   "./", "index.html", "manifest.webmanifest",
   "css/tokens.css", "css/app.css",
   "js/app.js", "js/store.js", "js/rules.js", "js/journal.js", "js/ui.js",
-  "js/views/cyberware.js", "js/views/perks.js", "js/views/capacity.js", "js/views/builds.js", "js/views/system.js", "js/views/journal.js", "js/views/weapons.js", "js/views/collection.js", "js/views/soon.js",
-  "data/index.js", "data/core.js", "data/perks.js", "data/cyberware.js", "data/missions.js", "data/weapons.js", "data/vehicles.js", "data/examples.js",
+  "js/views/cyberware.js", "js/views/perks.js", "js/views/capacity.js", "js/views/builds.js", "js/views/system.js", "js/views/journal.js", "js/views/weapons.js", "js/views/collection.js", "js/views/collectibles.js", "js/views/overview.js", "js/views/soon.js",
+  "data/index.js", "data/core.js", "data/perks.js", "data/cyberware.js", "data/missions.js", "data/weapons.js", "data/vehicles.js", "data/collectibles.js", "data/examples.js",
   "icons/icon.svg", "icons/icon-192.png", "icons/icon-512.png", "icons/apple-touch-icon.png"
 ];
 

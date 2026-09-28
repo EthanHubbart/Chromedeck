@@ -57,7 +57,7 @@ nav.tabs button.on::after{content:"";position:absolute;top:-2px;left:50%;width:8
 .subnav .mini.bad i{background:var(--red)}
 .subnav .mini b{position:absolute;top:-2px;bottom:-2px;width:2px;background:var(--text);opacity:.6}
 
-.subnav button{flex:1 1 0;max-width:170px;min-width:0;min-height:44px;padding:8px 4px 7px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
+.subnav button{flex:1 0 auto;max-width:170px;min-height:44px;padding:8px 4px 7px;font-size:13px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px;white-space:nowrap}
 .subnav button.on{color:var(--yellow);border-bottom-color:var(--yellow);background:linear-gradient(0deg,rgba(245,230,13,.08),transparent)}
 
 main{padding:12px 12px 0;max-width:720px;margin:0 auto}
@@ -334,3 +334,20 @@ select.sel{background:var(--panel2);border:1px solid var(--line2);color:var(--te
 .wstats div{border:1px solid var(--line);padding:5px 7px}
 .wstats small{display:block;font-size:10.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
 .wstats b{font-size:17px}
+
+/* ---------- Collection: overview dashboard & checklists ---------- */
+.wimg.tarot img{max-height:260px}
+.seg.jmode button small{display:block;font-size:11px;font-weight:600;opacity:.8;letter-spacing:0}
+.prog small.bad{display:block}
+.dash{padding-top:2px;padding-bottom:4px}
+.drow{display:grid;grid-template-columns:1fr auto;align-items:end;gap:2px 8px;width:100%;min-height:48px;padding:8px 2px 9px;text-align:left;border-bottom:1px solid var(--line)}
+.drow:last-child{border-bottom:0}
+.drow .dl{font-weight:600;font-size:15px;line-height:1.15}
+.drow .dl small{display:block;font-size:12px;font-weight:600;color:var(--red)}
+.drow .dn{font-size:17px;font-weight:700;color:var(--yellow)}
+.drow .dn span{font-size:12px;color:var(--muted);font-weight:600}
+.drow i{grid-column:1/-1;display:block;height:4px;background:#142129}
+.drow em{display:block;height:100%;background:var(--yellow)}
+.drow.full .dn{color:var(--cyan)}
+.drow.full em{background:var(--cyan)}
+.drow:hover .dl,.drow:focus-visible .dl{color:var(--cyan)}

@@ -10,16 +10,22 @@ import { cyberware } from "./cyberware.js";
 import { missions, missionSections } from "./missions.js";
 import { weapons } from "./weapons.js";
 import { vehicles } from "./vehicles.js";
+import { tarot, cyberpsychos, airdrops, relicTerminals, apartments } from "./collectibles.js";
 
 export const SEED = {
-  version: "2.31 seed 2026-09-30 · vehicles",
+  version: "2.31 seed 2026-09-28 · collectibles",
   ...core,
   perks,
   cyberware,
   missionSections,
   missions,
   weapons,
-  vehicles
+  vehicles,
+  tarot,
+  cyberpsychos,
+  airdrops,
+  relicTerminals,
+  apartments
 };
 
 export { EXAMPLE_BUILDS } from "./examples.js";

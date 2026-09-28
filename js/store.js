@@ -90,6 +90,12 @@ export function validateData(d) {
     const vids = new Set();
     for (const v of d.vehicles) { if (!v.id || !v.name || !v.kind) return `Vehicle "${v.name || v.id || "?"}" needs id, name and kind.`; if (vids.has(v.id)) return `Duplicate vehicle id "${v.id}".`; vids.add(v.id); }
   }
+  for (const k of ["tarot", "cyberpsychos", "airdrops", "relicTerminals", "apartments"]) {
+    if (d[k] === undefined) continue;
+    if (!Array.isArray(d[k])) return `${k} must be a list.`;
+    const seen = new Set();
+    for (const x of d[k]) { if (!x || !x.id || !x.name) return `An entry in ${k} needs id and name.`; if (seen.has(x.id)) return `Duplicate id "${x.id}" in ${k}.`; seen.add(x.id); }
+  }
   if (d.weapons !== undefined) {
     if (!Array.isArray(d.weapons)) return "weapons must be a list.";
     const wids = new Set();
@@ -170,6 +176,9 @@ export function normalize() {
   if (!Array.isArray(P.order)) P.order = [];
   if (!P.weapons || typeof P.weapons !== "object") P.weapons = {};             // {weaponId: timestamp owned}
   if (!P.vehicles || typeof P.vehicles !== "object") P.vehicles = {};           // {vehicleId: timestamp owned}
+  for (const k of ["tarot", "psychos", "psychoKilled", "airdrops", "relic", "apartments"]) if (!P[k] || typeof P[k] !== "object") P[k] = {};   // {id: timestamp} (psychoKilled: {id: true})
+  const prune = (list, obj) => { if (!list) return; const ok = new Set(list.map(x => x.id)); for (const id in obj) if (!ok.has(id)) delete obj[id]; };
+  prune(DATA.tarot, P.tarot); prune(DATA.cyberpsychos, P.psychos); prune(DATA.cyberpsychos, P.psychoKilled); prune(DATA.airdrops, P.airdrops); prune(DATA.relicTerminals, P.relic); prune(DATA.apartments, P.apartments);
   if (DATA.vehicles) { const ok = new Set(DATA.vehicles.map(v => v.id)); for (const id in P.vehicles) if (!ok.has(id)) delete P.vehicles[id]; }
   if (DATA.weapons) { const ok = new Set(DATA.weapons.map(w => w.id)); for (const id in P.weapons) if (!ok.has(id)) delete P.weapons[id]; }                                // user's custom mission order (ids), empty = recommended
   if (DATA.missions) { const ok = new Set(DATA.missions.map(m => m.id)); for (const id in P.missions) if (!ok.has(id)) delete P.missions[id]; P.order = P.order.filter(id => ok.has(id)); }
@@ -184,6 +193,7 @@ export function normalize() {
   if (!S.ui.journal.filter) S.ui.journal.filter = "all";
   if (!S.ui.weapons) S.ui.weapons = { show: "iconic", type: "all", q: "", hideOwned: false };
   if (!S.ui.vehicles) S.ui.vehicles = { kind: "all", src: "all", q: "", hideOwned: false };
+  if (!S.ui.collect) S.ui.collect = { kind: "tarot", hideDone: false };
   if (!S.builds.length) { S.builds.push(newBuild("Build 1")); }
   const d = newBuild();
   S.builds.forEach(b => {
