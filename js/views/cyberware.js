@@ -2,13 +2,19 @@
    The loadout (one panel per body slot), the cyberware picker, item details
    and the quick item editor.
    ============================================================================== */
-import { DATA, S, build, save, setData, clone } from "../store.js";
+import { DATA, S, current, isLive, build, save, setData, clone } from "../store.js";
 import { slotCount, cw, itemCost, derived } from "../rules.js";
 import { $, esc, toast, tierBadge, rarityName, firstLine, openSheet, closeSheet } from "../ui.js";
 import { renderAll } from "../app.js";
 
+/* In Live, the planner build's implants show as a guide: what it installs that V doesn't have yet. */
+const goal = () => isLive() ? build() : null;
+const installedIn = b => { const s = new Set(); Object.values(b.equipped).forEach(a => a.forEach(id => { if (id) s.add(id); })); return s; };
+
 export function renderCyberware() {
-  const b = build(); const D = derived(b);
+  const b = current(); const D = derived(b); const g = goal(); const have = installedIn(b);
+  const missingIn = sl => g ? (g.equipped[sl.id] || []).filter(id => id && !have.has(id) && cw(id)) : [];
+  const totalMissing = g ? DATA.slots.reduce((n, sl) => n + missingIn(sl).length, 0) : 0;
   const html = DATA.slots.map(sl => {
     const n = slotCount(sl, b);
     const arr = b.equipped[sl.id];
@@ -22,20 +28,22 @@ export function renderCyberware() {
       return `<button class="slot" data-detail="${it.id}" data-from="${sl.id}:${i}">${tierBadge(it)}<span class="nm">${esc(it.name)}<small>${esc(firstLine(it.effect))}</small></span><span class="cap num">${disc}${c}</span></button>`;
     }).join("");
     const perkNote = sl.perkSlot ? (D[sl.perkSlot] ? `${n} slots, 1 from ${sl.perkName}` : `${n} slot${n > 1 ? "s" : ""} · +1 with ${sl.perkName}`) : (sl.faceplate ? `1 + faceplate` : `${n} slot${n > 1 ? "s" : ""}`);
-    return `<div class="panel"><div class="ph"><h2>${esc(sl.name)}</h2><span class="meta"><b class="num">${used}</b> cap · ${perkNote}</span></div><div class="pb">${rows}</div></div>`;
+    const miss = missingIn(sl);
+    return `<div class="panel"><div class="ph"><h2>${esc(sl.name)}</h2><span class="meta"><b class="num">${used}</b> cap · ${perkNote}</span></div><div class="pb">${rows}${miss.length ? `<p class="hint goalline" style="margin:6px 0 2px">◆ Planner: ${miss.map(id => `<button class="lnk" data-detail="${id}">${esc(cw(id).name)}</button>`).join(", ")}</p>` : ""}</div></div>`;
   }).join("");
-  $("#v-cyberware").innerHTML = html + `<p class="hint">Costs shown after All Things Cyber (rank 2) where it applies. Strikethrough = list price. Tap an installed item for details, swap, or removal.</p>`;
+  const top = g ? `<div class="panel"><div class="pb"><p class="hint goalline" style="margin:0">${totalMissing ? `◆ Planner "${esc(g.name)}": ${totalMissing} implant${totalMissing > 1 ? "s" : ""} still to install. They're listed under each slot.` : `◆ Planner "${esc(g.name)}": every implant installed ✓`}</p></div></div>` : "";
+  $("#v-cyberware").innerHTML = top + html + `<p class="hint">Costs shown after All Things Cyber (rank 2) where it applies. Strikethrough = list price. Tap an installed item for details, swap, or removal.</p>`;
 }
 
 /* ---------- picker ---------- */
 let pick = null; // {slot, idx, q, chip, faceplate}
 function openPicker(slotId, idx) {
-  const sl = DATA.slots.find(s => s.id === slotId); const b = build();
+  const sl = DATA.slots.find(s => s.id === slotId); const b = current();
   const n = slotCount(sl, b); const isFaceplate = sl.faceplate && idx === n - 1;
   pick = { slot: slotId, idx, q: "", chip: "all", faceplate: isFaceplate };
-  const current = b.equipped[slotId][idx];
+  const curId = b.equipped[slotId][idx];
   openSheet(sl.name + (isFaceplate ? " — faceplate" : ""), `
-    <div class="search"><input id="pq" type="search" placeholder="Search name or effect" aria-label="Search cyberware" autocomplete="off">${current ? `<button class="btn sm warn" data-remove="1">Remove</button>` : ""}</div>
+    <div class="search"><input id="pq" type="search" placeholder="Search name or effect" aria-label="Search cyberware" autocomplete="off">${curId ? `<button class="btn sm warn" data-remove="1">Remove</button>` : ""}</div>
     <div class="chips" id="pchips"></div>
     <div id="plist"></div>
     <p class="hint" style="margin-top:8px">Each implant can only be installed once. Sorted by type, then cost.</p>`);
@@ -43,9 +51,9 @@ function openPicker(slotId, idx) {
   setTimeout(() => { const i = $("#pq"); if (i && window.innerWidth > 720) i.focus(); }, 50);
 }
 function renderPicker() {
-  const b = build();
+  const b = current();
   const installed = new Set(); Object.values(b.equipped).forEach(a => a.forEach(id => { if (id) installed.add(id); }));
-  const current = b.equipped[pick.slot][pick.idx];
+  const curId = b.equipped[pick.slot][pick.idx]; const g = goal();
   let items = DATA.cyberware.filter(c => c.slot === pick.slot && (!!c.faceplate === !!pick.faceplate));
   const types = [...new Set(items.map(c => c.type).filter(Boolean))];
   if (pick.chip === "iconic") items = items.filter(c => c.iconic);
@@ -55,15 +63,15 @@ function renderPicker() {
   items.sort((a, b2) => (a.type || "").localeCompare(b2.type || "") || a.cap - b2.cap || a.name.localeCompare(b2.name));
   $("#pchips").innerHTML = [["all", "All"], ...types.map(t => [t, t]), ["iconic", "Iconic"]].map(([v, l]) => `<button class="chip ${pick.chip === v ? "on" : ""}" data-chip="${esc(v)}" aria-pressed="${pick.chip === v}">${esc(l)}</button>`).join("");
   $("#plist").innerHTML = items.map(c => {
-    const used = installed.has(c.id) && c.id !== current;
+    const used = installed.has(c.id) && c.id !== curId;
     const cost = itemCost(c, b);
-    return `<div class="item ${used ? "used" : ""} ${c.id === current ? "sel" : ""}"><button class="main" data-install="${c.id}" ${used ? 'data-used="1"' : ""}>${tierBadge(c)}<span class="nm">${esc(c.name)}<small>${esc(firstLine(c.effect))}${c.req ? ` · needs ${esc(c.req)}` : ""}</small>${c.id === current ? '<span class="st">Installed here</span>' : used ? '<span class="st" style="color:var(--muted)">Installed elsewhere</span>' : ""}</span><span class="cap num">${cost}</span></button><button class="info" data-info="${c.id}" aria-label="Details for ${esc(c.name)}">ⓘ</button></div>`;
+    return `<div class="item ${used ? "used" : ""} ${c.id === curId ? "sel" : ""}"><button class="main" data-install="${c.id}" ${used ? 'data-used="1"' : ""}>${tierBadge(c)}<span class="nm">${esc(c.name)}<small>${esc(firstLine(c.effect))}${c.req ? ` · needs ${esc(c.req)}` : ""}</small>${c.id === curId ? '<span class="st">Installed here</span>' : used ? '<span class="st" style="color:var(--muted)">Installed elsewhere</span>' : ""}${g && !used && c.id !== curId && Object.values(g.equipped).some(a => a.includes(c.id)) ? '<span class="st goalst">◆ Planner</span>' : ""}</span><span class="cap num">${cost}</span></button><button class="info" data-info="${c.id}" aria-label="Details for ${esc(c.name)}">ⓘ</button></div>`;
   }).join("") || `<p class="hint">Nothing matches.</p>`;
 }
 
 /* ---------- details & edit ---------- */
 function openDetail(id, from) {
-  const it = cw(id); const b = build(); const cost = itemCost(it, b);
+  const it = cw(id); const b = current(); const cost = itemCost(it, b);
   const inSlot = from ? from.split(":") : null;
   if (inSlot) pick = null;
   openSheet(DATA.slots.find(s => s.id === it.slot).name, `
@@ -105,7 +113,7 @@ function commitEdit(id) {
 }
 
 function installAt(slotId, idx, id) {
-  const b = build();
+  const b = current();
   // remove from anywhere else first (unique per character)
   Object.keys(b.equipped).forEach(k => { b.equipped[k] = b.equipped[k].map(x => x === id ? null : x); });
   b.equipped[slotId][idx] = id; b.updated = Date.now(); save(); closeSheet(); renderAll(); toast("Installed");

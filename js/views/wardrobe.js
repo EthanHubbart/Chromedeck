@@ -2,7 +2,7 @@
    Two modes. Clothing list: every piece by slot, with colour/finish variants
    of one model grouped under it (ids like Jacket_22_basic_01 / _old_03 share
    model Jacket_22). Outfits: named looks on the V silhouette, one piece per
-   slot, shared by every save; owned ticks come from the current save.
+   slot, kept per save like everything else except builds.
    Pictures are the wiki's item renders for V's body type (Saves › V setup).
    ======================================================================== */
 import { S, DATA, save, uid } from "../store.js";
@@ -134,8 +134,8 @@ function openItem(id) {
 
 /* ---------- outfits ---------- */
 let picking = null;   // slot being filled from the outfit builder, or null
-const outfit = () => S.outfits.find(o => o.id === S.ui.wardrobe.outfit) || S.outfits[0];
-export function newOutfit(name) { const o = { id: uid(), name: name || `Outfit ${S.outfits.length + 1}`, slots: {} }; S.outfits.push(o); S.ui.wardrobe.outfit = o.id; return o; }
+const outfit = () => S.playthrough.outfits.find(o => o.id === S.ui.wardrobe.outfit) || S.playthrough.outfits[0];
+export function newOutfit(name) { const o = { id: uid(), name: name || `Outfit ${S.playthrough.outfits.length + 1}`, slots: {} }; S.playthrough.outfits.push(o); S.ui.wardrobe.outfit = o.id; return o; }
 
 function silhouette(b) {
   const fem = b === "f"; const sh = fem ? 30 : 36, wa = fem ? 21 : 26, hip = fem ? 29 : 27;
@@ -155,8 +155,8 @@ function outfitsHtml() {
   const have = worn.filter(c => owned(c.id)).length;
   return `
   <div class="panel"><div class="ph"><h2>Outfit</h2><span class="meta">${worn.length ? `${have} of ${worn.length} owned` : "empty"}</span></div><div class="pb">
-    <div class="orow"><select id="cwOutfit" aria-label="Outfit">${S.outfits.map(x => `<option value="${x.id}"${x.id === o.id ? " selected" : ""}>${esc(x.name)}</option>`).join("")}</select>
-      <button class="btn" id="cwNew">New</button><button class="btn" id="cwRename">Rename</button>${S.outfits.length > 1 ? `<button class="btn warn" id="cwDel">Delete</button>` : ""}</div>
+    <div class="orow"><select id="cwOutfit" aria-label="Outfit">${S.playthrough.outfits.map(x => `<option value="${x.id}"${x.id === o.id ? " selected" : ""}>${esc(x.name)}</option>`).join("")}</select>
+      <button class="btn" id="cwNew">New</button><button class="btn" id="cwRename">Rename</button>${S.playthrough.outfits.length > 1 ? `<button class="btn warn" id="cwDel">Delete</button>` : ""}</div>
     <div class="seg jmode" style="grid-template-columns:1fr 1fr" role="group" aria-label="Body type for pictures">${[["f", "Feminine body"], ["m", "Masculine body"]].map(([k, l]) => `<button data-cwbody="${k}" class="${b === k ? "on" : ""}" aria-pressed="${b === k}">${l}</button>`).join("")}</div>
     ${!S.playthrough.v.body ? `<p class="hint" style="margin:-2px 0 6px">Showing masculine pictures until you pick. This sets the body type of the current save.</p>` : ""}
     <div class="doll"><div class="col">${["head", "face", "outer"].map(s => slotBox(o, s)).join("")}</div>
@@ -164,7 +164,7 @@ function outfitsHtml() {
       <div class="col">${["inner", "legs", "feet"].map(s => slotBox(o, s)).join("")}</div></div>
     <div class="outfit1">${slotBox(o, "special")}</div>
     <div class="btnrow"><button class="btn pri" id="cwShop" ${worn.length && have < worn.length ? "" : "disabled"}>Shopping list</button>${worn.length ? `<button class="btn" id="cwClear">Clear outfit</button>` : ""}</div>
-    <p class="hint" style="margin:8px 0 0">Tap a slot to pick a piece. Outfits are shared by all saves; "owned" is for the save you have loaded.</p>
+    <p class="hint" style="margin:8px 0 0">Tap a slot to pick a piece. Outfits belong to the save you have loaded.</p>
   </div></div>`;
 }
 function openPicker(s) {
@@ -234,9 +234,9 @@ export function click(t) {
     const c = ds.cwwear && cloth(ds.cwwear); picking = null; closeSheet(); refresh(); toast(c ? "Wearing: " + c.name : "Slot cleared"); return true;
   }
   if (ds.cwbody) { S.playthrough.v.body = ds.cwbody; refresh(); return true; }
-  if (t.id === "cwNew") { const n = prompt("Name the new outfit", `Outfit ${S.outfits.length + 1}`); if (n === null) return true; newOutfit(n.trim()); refresh(); return true; }
+  if (t.id === "cwNew") { const n = prompt("Name the new outfit", `Outfit ${S.playthrough.outfits.length + 1}`); if (n === null) return true; newOutfit(n.trim()); refresh(); return true; }
   if (t.id === "cwRename") { const o = outfit(); const n = prompt("Rename outfit", o.name); if (n && n.trim()) { o.name = n.trim().slice(0, 40); refresh(); } return true; }
-  if (t.id === "cwDel") { const o = outfit(); if (!confirm(`Delete the outfit "${o.name}"?`)) return true; S.outfits = S.outfits.filter(x => x !== o); U.outfit = S.outfits[0].id; refresh(); return true; }
+  if (t.id === "cwDel") { const o = outfit(); if (!confirm(`Delete the outfit "${o.name}"?`)) return true; S.playthrough.outfits = S.playthrough.outfits.filter(x => x !== o); U.outfit = S.playthrough.outfits[0].id; refresh(); return true; }
   if (t.id === "cwClear") { const o = outfit(); if (!confirm(`Take everything off "${o.name}"?`)) return true; o.slots = {}; refresh(); return true; }
   if (t.id === "cwShop") { openShop(); return true; }
   return false;

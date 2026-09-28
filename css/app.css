@@ -399,3 +399,12 @@ select.sel{background:var(--panel2);border:1px solid var(--line2);color:var(--te
 .nopic{display:grid;place-items:center;color:var(--faint);font-size:20px}
 .nopic.th{width:46px;height:46px;flex:0 0 46px;border:1px solid var(--line)}
 .wimg .nopic{padding:28px 0 20px;font-size:13px}.wimg .nopic::after{content:" picture unavailable offline";margin-left:4px}
+
+/* ---------- Live / Planner ---------- */
+.buildbar .modeseg{flex-shrink:0}
+.buildbar .modeseg button{padding:5px 9px;min-height:34px;font-size:12.5px;letter-spacing:.06em;text-transform:uppercase}
+.goalline{color:var(--yellow)}
+.goalline .lnk{color:var(--yellow)}
+.achip .goalv{display:block;font-style:normal;font-size:10.5px;color:var(--yellow);line-height:1}
+.st.goalst{color:var(--yellow)}
+.warnbox.goalbox{border-color:var(--yellow);color:var(--yellow);background:rgba(245,230,13,.05)}

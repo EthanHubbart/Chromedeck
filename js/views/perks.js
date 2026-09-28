@@ -1,12 +1,23 @@
 /* ============================ Character › Perks ============================
    Attribute levels, point budgets and the hex perk trees (drawn as SVG).
    ========================================================================== */
-import { DATA, build, save } from "../store.js";
+import { DATA, current, isLive, build, save } from "../store.js";
 import { perk, attrMeta, attrVal, perkLevel, perkGate, budgets, dependents, addPerkPoint, removePerkPoint, setAttr, fixPerkSlots, reqsOf } from "../rules.js";
 import { $, esc, openSheet } from "../ui.js";
 import { renderAll } from "../app.js";
 
 export const UI = { perkAttr: "body", perkBranch: 0 };
+/* In Live, the planner build shows through: its perk levels and attributes are the goal. */
+const goal = () => isLive() ? build() : null;
+const wantPerk = (g, b, id) => g ? Math.max(0, perkLevel(g, id) - perkLevel(b, id)) : 0;
+function toGo(g, b) {
+  if (!g) return null;
+  let perks = 0, attrs = 0; const B = budgets(b), G = budgets(g);
+  DATA.perks.forEach(p => { perks += wantPerk(g, b, p.id) * (p.cost ? 0 : 1); });
+  DATA.attributes.filter(a => !a.relic).forEach(a => { attrs += Math.max(0, attrVal(g, a.id) - attrVal(b, a.id)); });
+  const relic = Math.max(0, G.relicSpent - B.relicSpent);
+  return { perks, attrs, relic, level: Math.max(0, G.lvl - B.lvl) };
+}
 const TREE_W = 360, NODE_CORE = 25, NODE_SAT = 19, ROW_H = 86, BAND_PAD = 8, LABEL_H = 26, MAX_PER_ROW = 3;
 function layoutBranch(attr, br, b){
   const P = DATA.perks.filter(p=>p.attr===attr && p.br===br);
@@ -39,11 +50,12 @@ function hexPath(x,y,r){ const pts=[]; for(let k=0;k<6;k++){ const a=Math.PI/6+k
 function wrapLabel(s, max){ const words=s.split(" "); const lines=[]; let cur=""; words.forEach(w=>{ if((cur+" "+w).trim().length>max && cur){ lines.push(cur); cur=w; } else cur=(cur+" "+w).trim(); }); if(cur) lines.push(cur); if(lines.length>3){ lines[2]=lines.slice(2).join(" "); lines.length=3; if(lines[2].length>max+2) lines[2]=lines[2].slice(0,max)+"…"; } return lines; }
 
 export function renderPerks(){
-  const b=build(); const B=budgets(b); const P=DATA.progression;
+  const b=current(); const B=budgets(b); const P=DATA.progression; const g=goal(); const T=toGo(g,b);
   const attr=attrMeta(UI.perkAttr)||DATA.attributes[0]; UI.perkAttr=attr.id;
   if(UI.perkBranch>=attr.branches.length) UI.perkBranch=0;
   const av = attr.relic ? null : attrVal(b,attr.id);
-  const chips = DATA.attributes.map(a=>`<button class="achip ${a.id===attr.id?"on":""}" data-pattr="${a.id}"><b>${a.short}</b><span class="num">${a.relic?B.relicSpent+"/"+B.relicTotal:attrVal(b,a.id)}</span></button>`).join("");
+  const chips = DATA.attributes.map(a=>{ const up = g && !a.relic && attrVal(g,a.id)>attrVal(b,a.id);
+    return `<button class="achip ${a.id===attr.id?"on":""}" data-pattr="${a.id}"><b>${a.short}</b><span class="num">${a.relic?B.relicSpent+"/"+B.relicTotal:attrVal(b,a.id)}${up?`<em class="goalv">◆${attrVal(g,a.id)}</em>`:""}</span></button>`; }).join("");
   const branches = attr.branches.length>1 ? `<div class="seg wide">${attr.branches.map((n,i)=>`<button data-pbranch="${i}" class="${UI.perkBranch===i?"on":""}">${esc(n)}</button>`).join("")}</div>` : "";
   const spent = B.byAttr[attr.id]||0;
   const tierMarks = attr.relic ? "" : `<div class="tiers">${P.tiers.map(t=>`<span class="${av>=t?"on":""}"><b>${t}</b>${P.tierNames[t]}</span>`).join("")}</div>`;
@@ -52,6 +64,7 @@ export function renderPerks(){
   <div class="panel"><div class="ph"><h2>Points</h2><span class="meta">level ${B.lvl}</span></div><div class="pb">
     <div class="pts"><div><small>Attribute</small><b class="num"${bad(B.attrFree)}>${B.attrSpent}<span>/${B.attrTotal}</span></b></div><div><small>Perk</small><b class="num"${bad(B.perkFree)}>${B.perkSpent}<span>/${B.perkTotal}</span></b></div><div><small>Relic</small><b class="num"${bad(B.relicFree)}>${B.relicSpent}<span>/${B.relicTotal}</span></b></div></div>
     <div class="field" style="border:0;padding-top:4px"><div class="k">Bonus perk points<small>on top of 1 per level: 10 from skills at 15/35, the rest from Perk Shards (count varies by patch)</small></div><div class="v"><input type="number" min="0" max="40" value="${b.bonusPerk===undefined?P.perkBonus:b.bonusPerk}" data-f="bonusPerk" aria-label="Bonus perk points"></div></div>
+    ${T?`<p class="hint goalline" style="margin:6px 0 0">◆ Planner "${esc(g.name)}": ${T.perks||T.attrs||T.relic?[T.perks&&`${T.perks} perk point${T.perks>1?"s":""}`,T.attrs&&`${T.attrs} attribute point${T.attrs>1?"s":""}`,T.relic&&`${T.relic} Relic point${T.relic>1?"s":""}`].filter(Boolean).join(", ")+" still to go"+(T.level?` (planned at level ${budgets(g).lvl})`:""):"everything matched ✓"}</p>`:""}
   </div></div>
   <div class="achips">${chips}</div>
   <div class="panel"><div class="ph"><h2>${esc(attr.name)}</h2><span class="meta"><b class="num">${spent}</b> pts in tree</span></div><div class="pb">
@@ -62,10 +75,10 @@ export function renderPerks(){
     ${branches}
   </div></div>
   <div class="tree" id="tree">${renderTree(attr.id, UI.perkBranch, b)}</div>
-  <p class="hint">Tap a node for details and to add or remove points. Removing a core perk clears everything that hangs off it.</p>`;
+  <p class="hint">Tap a node for details and to add or remove points. Removing a core perk clears everything that hangs off it.${isLive()?" ◆ with a dashed ring = in your planner build, not taken yet.":""}</p>`;
 }
 function renderTree(attr, br, b){
-  const L=layoutBranch(attr, br, b); const P=DATA.progression; const av=attr==="relic"?99:attrVal(b,attr);
+  const L=layoutBranch(attr, br, b); const gb=goal(); const P=DATA.progression; const av=attr==="relic"?99:attrVal(b,attr);
   let s=`<svg viewBox="0 0 ${TREE_W} ${L.h}" width="100%" style="display:block" font-family="inherit">`;
   L.bands.forEach((bd,i)=>{
     const locked = bd.tier>av && attr!=="relic";
@@ -92,7 +105,12 @@ function renderTree(attr, br, b){
     const fill = l ? (maxed?"var(--yellow)":"rgba(245,230,13,.18)") : g.ok ? "var(--panel2)" : "var(--panel)";
     const stroke = l ? "var(--yellow)" : g.ok ? "var(--cyan)" : "var(--faint)";
     const txt = l ? (maxed?"#111":"var(--yellow)") : g.ok ? "var(--text)" : "var(--faint)";
-    s+=`<g class="node" data-perk="${p.id}" role="button" tabindex="0" aria-label="${esc(p.name)}, ${l}/${p.max}">`;
+    const want=wantPerk(gb,b,p.id);
+    s+=`<g class="node" data-perk="${p.id}" role="button" tabindex="0" aria-label="${esc(p.name)}, ${l}/${p.max}${want?`, planner wants ${perkLevel(gb,p.id)}`:""}">`;
+    if(want){ // planner build has this (or more levels): dashed yellow ring + a diamond marker
+      s+=`<path d="${hexPath(n.x,n.y,n.r+6)}" fill="none" stroke="var(--yellow)" stroke-width="1.4" stroke-dasharray="3 3"/>`;
+      const dx=n.x+n.r*.95, dy=n.y-n.r*.95; s+=`<path d="M${dx},${dy-6}L${dx+6},${dy}L${dx},${dy+6}L${dx-6},${dy}Z" fill="var(--yellow)" stroke="var(--panel)" stroke-width="1.5"/>`;
+    }
     s+=`<path d="${hexPath(n.x,n.y,n.r+3)}" fill="none" stroke="${stroke}" stroke-opacity=".35" stroke-width="1"/>`;
     s+=`<path d="${hexPath(n.x,n.y,n.r)}" fill="${fill}" stroke="${stroke}" stroke-width="${p.core?2.2:1.6}" ${g.ok||l?"":'stroke-dasharray="4 3"'}/>`;
     if(p.max>1) s+=`<text x="${n.x}" y="${n.y+5}" text-anchor="middle" font-size="${p.core?14:12}" font-weight="700" fill="${txt}">${l}/${p.max}</text>`;
@@ -106,7 +124,7 @@ function renderTree(attr, br, b){
   return s;
 }
 function openPerk(id){
-  const b=build(); const p=perk(id); const l=perkLevel(b,id); const g=perkGate(b,p); const a=attrMeta(p.attr);
+  const b=current(); const p=perk(id); const l=perkLevel(b,id); const g=perkGate(b,p); const a=attrMeta(p.attr); const gb=goal(); const gl=gb?perkLevel(gb,id):0;
   const deps = l===1 ? dependents(id).filter(d=>perkLevel(b,d)>0) : [];
   const lvls = p.lv.map((t,i)=>`<div class="lvl ${i<l?"on":""}"><span class="num">${p.max>1?`Lv ${i+1}`:(p.cost?`${p.cost} pt`:"")}</span><span>${esc(t)}</span></div>`).join("");
   openSheet(a.name + (a.relic?"":" · "+DATA.progression.tierNames[p.tier]+" "+p.tier), `
@@ -116,6 +134,7 @@ function openPerk(id){
       ${reqsOf(p).map(r=>`<div class="${perkLevel(b,r)?"okbox":"warnbox"}" style="margin-top:0">Requires ${esc(perk(r).name)}${perk(r).attr!==p.attr||perk(r).br!==p.br?` <small>(${esc(attrMeta(perk(r).attr).name)}${perk(r).attr===p.attr?", other branch":""})</small>`:""}${perkLevel(b,r)?" ✓":""}</div>`).join("")}
       ${!g.ok && reqsOf(p).every(r=>perkLevel(b,r))?`<div class="warnbox" style="margin-top:0">${esc(g.why)}</div>`:""}
       ${p.verified===false?`<div class="warnbox"><b>Open question:</b> ${esc(p.check||"")}</div>`:""}
+      ${gb&&gl?`<div class="${gl>l?"warnbox goalbox":"okbox"}" style="margin-top:0">◆ Planner "${esc(gb.name)}": ${p.max>1?`level ${gl}`:"taken"}${gl>l?"":" ✓ matched"}</div>`:""}
       <div class="lvls">${lvls}</div>
       ${deps.length?`<p class="hint">Removing the last point also clears: ${esc(deps.map(d=>perk(d).name).join(", "))}.</p>`:""}
       ${p.src?`<p class="hint" style="margin:0 0 6px"><a href="${esc(p.src)}" target="_blank" rel="noopener">Wiki page ↗</a></p>`:""}
