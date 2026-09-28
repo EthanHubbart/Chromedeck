@@ -7,6 +7,7 @@ const DATA_MISSIONS = () => DATA.missions;
 import { mission, isDone, isAvailable, isMissed, isMain, blockers, leadsTo, lockedOutBy, deadlinesFor, anchorOf, requirementsOf, missed, plan, move, resetOrder, markWithPrereqs, toggleDone, setChoice, progress, section, isEnding, applies } from "../journal.js";
 import { $, esc, toast, openSheet, sheetOpen } from "../ui.js";
 import { weaponsFrom } from "./weapons.js";
+import { vehiclesFrom } from "./collection.js";
 
 const TYPE = { main: "Main Job", side: "Side Job", gig: "Gig" };
 const PATH = { hellman: "Anders Hellman thread", evelyn: "Evelyn Parker thread", alt: "Voodoo Boys (Evelyn thread, part 2)", takemura: "Goro Takemura thread" };
@@ -226,6 +227,7 @@ function openMission(id) {
       ${m.note ? `<div class="eff">${esc(m.note)}</div>` : ""}
       ${items ? `<div class="k-h">Rewards & unique items</div><ul class="ilist">${items}</ul>${(m.items || []).some(i => i.miss) ? `<p class="hint" style="margin:0 0 8px">Missable items can only be picked up during this mission.</p>` : ""}` : ""}
       ${(() => { const ws = weaponsFrom(m.id).filter(w => w.iconic); return ws.length ? `<div class="k-h">Iconic weapons here</div><p style="margin:0 0 8px">${ws.map(w => `<button class="lnk" data-weapon="${w.id}">${esc(w.name)}</button>${S.playthrough.weapons[w.id] ? " ✓" : w.miss && !w.lowe ? " ⚠" : ""}`).join(", ")}</p>` : ""; })()}
+      ${(() => { const vs = vehiclesFrom(m.id); return vs.length ? `<div class="k-h">Vehicles here</div><p style="margin:0 0 8px">${vs.map(v => `<button class="lnk" data-vehicle="${v.id}">${esc(v.name)}</button>${S.playthrough.vehicles[v.id] ? " ✓" : v.dep ? " ⚠" : ""}`).join(", ")}</p>` : ""; })()}
       ${reqNames.length ? `<div class="k-h">${rq.any.length && !rq.all.length ? "Follows one of" : m.type === "gig" && !(m.after || []).length ? `Unlocks after tier ${m.tier - 1}` : "Requires"}</div><p style="margin:0 0 8px">${plist(reqNames)}</p>` : ""}
       ${anc ? `<div class="k-h">Opens up</div><p style="margin:0 0 8px">After ${plist([anc])} <span class="hint">(estimated: the wiki lists no prerequisite, and this is when its area opens)</span></p>` : ""}
       ${m.ext && m.ext.length ? `<div class="k-h">Also needs</div><p style="margin:0 0 8px">${esc(m.ext.join("; "))} <span class="hint">(not tracked in the app yet)</span></p>` : ""}

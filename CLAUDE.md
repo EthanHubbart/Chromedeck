@@ -24,10 +24,12 @@ js/rules.js           perk gates and budgets, capacity math
 js/journal.js         mission availability, branches, recommended order (plan), reordering, progress
 js/ui.js              $, esc, toast, the shared sheet, download/readFile, icons
 js/views/weapons.js   Gear › Weapons (list, filters, iconic tracking, detail); exports weaponsFrom() for the Journal
+js/views/collection.js  Collection (vehicles for now); exports vehiclesFrom() for the Journal
 js/views/*.js         one module per screen: export a render function plus optional click/input/change handlers that return true when handled
 data/index.js         assembles SEED from core.js, perks.js, cyberware.js, missions.js; holds the data `version`
 data/missions.js      missionSections + missions (Main Jobs, Side Jobs incl. the wiki's Minor Jobs, Gigs); field meanings are in its header comment
 data/weapons.js       every weapon (197, 114 iconic) with stats, where to get it, mission links, picture URL
+data/vehicles.js      every ownable car and motorcycle (87) with how to get it, Autofixer price/requirements, specs
 data/examples.js      starter builds, used only when there are no saved builds
 icons/                icon.svg (source) and rendered PNGs
 chromedeck.html       the original single-file planner, kept so old saves can be exported from it; not part of the app
@@ -97,6 +99,11 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
 - Owned iconics: `S.playthrough.weapons` ({id: timestamp}). Mission details list the iconics a mission gives (`weaponsFrom`).
 - Pictures are wiki CDN URLs (`img`), loaded when viewed and cached by the service worker; the view falls back to a placeholder when offline and uncached.
 
+## Vehicle data
+
+- From the wiki "Cyberpunk 2077 Vehicles" page's Ownable Vehicles tables (source + notes) and each vehicle's `Infobox Vehicle`. No game ids exist, so `id` is built from the name; never change it.
+- `from` links to missions; `dep` = the reward depends on a choice (note says what); lifepath-only via `branch`. Owned: `S.playthrough.vehicles`. Collection is a single page for now; when more trackers land, give it sub-tabs.
+
 ## UI conventions
 
 - Mobile first: design at ~390px wide, bottom navigation, and tap targets of at least 44px. It should also look right on a PC.
@@ -112,7 +119,7 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
    - manual reordering that warns about risks,
    - the unique items tied to each mission,
    - points of no return, in plain words.
-3. **Weapons and vehicles:** Weapons done (Gear › Weapons). Vehicles next, in Collection.
+3. **Weapons and vehicles (done):** Gear › Weapons and Collection › Vehicles.
 4. **Wardrobe (Gear › Wardrobe):** full clothing list with slot, stats and location (exact where static), plus an outfit builder on the V silhouette.
 5. **Collection:** vehicles, Tarot graffiti, Cyberpsycho Sightings, Phantom Liberty airdrops, apartments, romances and endings, achievements, and a completion dashboard (which also counts iconic weapons from Gear).
 

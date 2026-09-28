@@ -85,6 +85,11 @@ export function validateData(d) {
     }
     for (const m of d.missions) for (const r of [...(m.after || []), ...(m.any || []), ...(m.before || [])]) if (!mids.has(r)) return `"${m.name}" refers to unknown mission "${r}".`;
   }
+  if (d.vehicles !== undefined) {
+    if (!Array.isArray(d.vehicles)) return "vehicles must be a list.";
+    const vids = new Set();
+    for (const v of d.vehicles) { if (!v.id || !v.name || !v.kind) return `Vehicle "${v.name || v.id || "?"}" needs id, name and kind.`; if (vids.has(v.id)) return `Duplicate vehicle id "${v.id}".`; vids.add(v.id); }
+  }
   if (d.weapons !== undefined) {
     if (!Array.isArray(d.weapons)) return "weapons must be a list.";
     const wids = new Set();
@@ -164,6 +169,8 @@ export function normalize() {
   if (!P.choices) P.choices = { lifepath: null, pl: null, plEnd: null };     // story branches taken this run
   if (!Array.isArray(P.order)) P.order = [];
   if (!P.weapons || typeof P.weapons !== "object") P.weapons = {};             // {weaponId: timestamp owned}
+  if (!P.vehicles || typeof P.vehicles !== "object") P.vehicles = {};           // {vehicleId: timestamp owned}
+  if (DATA.vehicles) { const ok = new Set(DATA.vehicles.map(v => v.id)); for (const id in P.vehicles) if (!ok.has(id)) delete P.vehicles[id]; }
   if (DATA.weapons) { const ok = new Set(DATA.weapons.map(w => w.id)); for (const id in P.weapons) if (!ok.has(id)) delete P.weapons[id]; }                                // user's custom mission order (ids), empty = recommended
   if (DATA.missions) { const ok = new Set(DATA.missions.map(m => m.id)); for (const id in P.missions) if (!ok.has(id)) delete P.missions[id]; P.order = P.order.filter(id => ok.has(id)); }
   if (!S.dataEdits) S.dataEdits = {};
@@ -176,6 +183,7 @@ export function normalize() {
   if (!S.ui.journal) S.ui.journal = { hideDone: true };
   if (!S.ui.journal.filter) S.ui.journal.filter = "all";
   if (!S.ui.weapons) S.ui.weapons = { show: "iconic", type: "all", q: "", hideOwned: false };
+  if (!S.ui.vehicles) S.ui.vehicles = { kind: "all", src: "all", q: "", hideOwned: false };
   if (!S.builds.length) { S.builds.push(newBuild("Build 1")); }
   const d = newBuild();
   S.builds.forEach(b => {
