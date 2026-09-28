@@ -78,11 +78,12 @@ export function validateData(d) {
     if (!Array.isArray(d.missions) || !Array.isArray(d.missionSections)) return "missions and missionSections must be lists.";
     const secs = new Set(d.missionSections.map(s => s.id)), mids = new Set();
     for (const m of d.missions) {
-      if (!m.id || !m.name || !m.type || !m.sec) return `Mission "${m.name || m.id || "?"}" needs id, name, type and sec.`;
+      if (!m.id || !m.name || !m.type) return `Mission "${m.name || m.id || "?"}" needs id, name and type.`;
+      if (m.type === "main" && !m.sec) return `Main job "${m.name}" needs a sec.`;
       if (mids.has(m.id)) return `Duplicate mission id "${m.id}".`; mids.add(m.id);
-      if (!secs.has(m.sec)) return `"${m.name}" points at unknown section "${m.sec}".`;
+      if (m.sec && !secs.has(m.sec)) return `"${m.name}" points at unknown section "${m.sec}".`;
     }
-    for (const m of d.missions) for (const r of [...(m.after || []), ...(m.any || [])]) if (!mids.has(r)) return `"${m.name}" requires unknown mission "${r}".`;
+    for (const m of d.missions) for (const r of [...(m.after || []), ...(m.any || []), ...(m.before || [])]) if (!mids.has(r)) return `"${m.name}" refers to unknown mission "${r}".`;
   }
   return null;
 }
@@ -166,6 +167,7 @@ export function normalize() {
   if (S.ui.tab === "wardrobe") { S.ui.tab = "gear"; S.ui.subs.gear = "wardrobe"; }
   if (!UI_TABS.includes(S.ui.tab)) S.ui.tab = "character";
   if (!S.ui.journal) S.ui.journal = { hideDone: true };
+  if (!S.ui.journal.filter) S.ui.journal.filter = "all";
   if (!S.builds.length) { S.builds.push(newBuild("Build 1")); }
   const d = newBuild();
   S.builds.forEach(b => {

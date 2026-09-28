@@ -10,7 +10,7 @@ import { cyberware } from "./cyberware.js";
 import { missions, missionSections } from "./missions.js";
 
 export const SEED = {
-  version: "2.31 seed 2026-09-28 · wiki-checked",
+  version: "2.31 seed 2026-09-29 · side jobs",
   ...core,
   perks,
   cyberware,

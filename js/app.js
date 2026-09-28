@@ -14,7 +14,7 @@ import * as system from "./views/system.js";
 import * as journal from "./views/journal.js";
 import { renderSoon } from "./views/soon.js";
 
-export const APP_VERSION = "0.4.1";   // keep in step with CACHE in sw.js
+export const APP_VERSION = "0.5.0";   // keep in step with CACHE in sw.js
 
 /* ---------- navigation ---------- */
 /* Bottom tabs, left to right. A tab with `subs` shows sub-tabs across the top
