@@ -4,7 +4,7 @@
    ================================================================= */
 import { S, save, DATA } from "../store.js";
 const DATA_MISSIONS = () => DATA.missions;
-import { mission, isDone, isAvailable, isMissed, isMain, blockers, leadsTo, lockedOutBy, deadlinesFor, anchorOf, missed, plan, move, resetOrder, markWithPrereqs, toggleDone, setChoice, progress, section, isEnding, applies } from "../journal.js";
+import { mission, isDone, isAvailable, isMissed, isMain, blockers, leadsTo, lockedOutBy, deadlinesFor, anchorOf, requirementsOf, missed, plan, move, resetOrder, markWithPrereqs, toggleDone, setChoice, progress, section, isEnding, applies } from "../journal.js";
 import { $, esc, toast, openSheet, sheetOpen } from "../ui.js";
 
 const TYPE = { main: "Main Job", side: "Side Job", gig: "Gig" };
@@ -22,7 +22,8 @@ const CHOICES = {
   pl: { label: "Phantom Liberty: at Firestarter you sided with", opts: [["", "Not yet"], ["songbird", "Songbird"], ["reed", "Reed"]] },
   plEnd: { label: "At The Killing Moon you", opts: [["", "Not yet"], ["surrender", "Surrendered her"], ["escape", "Helped her escape"]] }
 };
-const FILTERS = [["all", "All"], ["main", "Main"], ["side", "Side"]];
+const FILTERS = [["all", "All"], ["main", "Main"], ["side", "Side"], ["gig", "Gigs"]];
+const matchFilter = (m, f) => f === "all" || m.type === f;
 const missableLeft = m => !isDone(m.id) && (m.items || []).some(i => i.miss);
 const hasDeadline = m => !isDone(m.id) && !isMissed(m) && (m.before || []).length > 0;
 const typeLabel = m => TYPE[m.type] + (m.minor ? " (minor)" : "");
@@ -42,7 +43,7 @@ function tags(m, inNext) {
 function row(m, inNext) {
   const d = isDone(m.id);
   const lane = m.path && laneOf(m);
-  const sub = [typeLabel(m), lane ? lane.short : m.line || m.giver, m.district, m.pl && "PL"].filter(Boolean).map(esc).join(" · ");
+  const sub = [typeLabel(m), lane ? lane.short : m.line || m.giver, m.tier && `Tier ${m.tier}`, m.district, m.pl && "PL"].filter(Boolean).map(esc).join(" · ");
   return `<div class="mrow ${d ? "done" : ""} ${isMissed(m) ? "missed" : ""}">
     <button class="mchk" data-mdone="${m.id}" aria-pressed="${d}" aria-label="${d ? "Mark not done" : "Mark done"}: ${esc(m.name)}"><i></i></button>
     <button class="mmain" data-mission="${m.id}"><span class="nm">${esc(m.name)}<small>${sub}</small></span><span class="tags">${tags(m, inNext)}</span></button>
@@ -99,7 +100,7 @@ export function renderJournal() {
   let next = avail.slice(0, 5);
   const nextMain = avail.find(isMain);
   if (nextMain && !next.includes(nextMain)) next = [...next.slice(0, 4), nextMain];
-  const byFilter = m => f === "all" || (f === "main" ? isMain(m) : !isMain(m));
+  const byFilter = m => matchFilter(m, f);
   const visible = m => byFilter(m) && !(hide && isDone(m.id));
   const story = P.filter(m => !isEnding(m)), ends = P.filter(isEnding);
   const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
@@ -107,11 +108,11 @@ export function renderJournal() {
   const custom = S.playthrough.order.length > 0;
   const ch = S.playthrough.choices;
   const deadlines = P.filter(hasDeadline);
-  const count = k => P.filter(m => (k === "all" || (k === "main" ? isMain(m) : !isMain(m))) && !isDone(m.id)).length;
+  const count = k => P.filter(m => matchFilter(m, k) && !isDone(m.id)).length;
 
   $("#v-journal").innerHTML = `
   <div class="panel"><div class="ph"><h2>Your run</h2><span class="meta">${P.length + lost.length} missions</span></div><div class="pb">
-    <div class="prog three">${stat("Main story", pr.storyDone, pr.storyTotal)}${stat("Side jobs", pr.sideDone, pr.sideTotal, pr.sideMissed ? `<small class="bad">${pr.sideMissed} missed</small>` : "")}${stat("Endings", pr.pathDone, pr.pathTotal)}</div>
+    <div class="prog">${stat("Main story", pr.storyDone, pr.storyTotal)}${stat("Side jobs", pr.sideDone, pr.sideTotal, pr.sideMissed ? `<small class="bad">${pr.sideMissed} missed</small>` : "")}${stat("Gigs", pr.gigDone, pr.gigTotal)}${stat("Endings", pr.pathDone, pr.pathTotal)}</div>
     ${seg("lifepath")}${seg("pl")}${ch.pl === "songbird" ? seg("plEnd") : ""}
     ${!ch.lifepath ? `<p class="hint" style="margin:6px 0 0">Pick your lifepath so the right lifepath jobs count.</p>` : ""}
   </div></div>
@@ -125,17 +126,18 @@ export function renderJournal() {
   <div class="panel"><div class="ph"><h2>Recommended order</h2><span class="meta">${custom ? `custom · <button class="lnk" id="jReset">reset</button>` : "re-plans as you go"}</span></div><div class="pb">
     <div class="chips" role="group" aria-label="Show">${FILTERS.map(([k, l]) => `<button class="chip ${f === k ? "on" : ""}" data-jfilter="${k}" aria-pressed="${f === k}">${l} <span class="num">${count(k)}</span></button>`).join("")}</div>
     <div class="field" style="padding-top:0"><div class="k">Hide finished missions</div><div class="v"><button class="tog ${hide ? "on" : ""}" id="jHide" aria-pressed="${hide}" aria-label="Hide finished missions"></button></div></div>
-    ${withHeaders(story, visible, f !== "side") || `<p class="hint">Nothing left here.</p>`}
+    ${withHeaders(story, visible, f === "all" || f === "main") || `<p class="hint">Nothing left here.</p>`}
     ${ends.some(visible) ? `<details class="mends"><summary><b>Ending paths</b><small>You pick one at the end of Nocturne Op55N1. Each is its own run; completionists reload to see them all.</small></summary>${withHeaders(ends, visible)}</details>` : ""}
     ${lost.length && f !== "main" ? `<details class="mends"><summary><b>Missed · ${lost.length}</b><small>Their deadline mission is done. If you actually did one, tick it.</small></summary>${lost.map(m => row(m)).join("")}</details>` : ""}
   </div></div>
-  <p class="hint">Side jobs come first in the order: doing them as soon as they unlock keeps deadlines safe. Gigs arrive in the next batch. Data from the <a href="https://cyberpunk.fandom.com/wiki/Cyberpunk_2077_Side_Jobs" target="_blank" rel="noopener">Cyberpunk Wiki</a>; tap a mission for its source.</p>`;
+  <p class="hint">Side jobs and gigs come first in the order: doing them as soon as they unlock keeps deadlines safe. NCPD Scanner Hustles aren't tracked. Data from the <a href="https://cyberpunk.fandom.com/wiki/Cyberpunk_2077_Side_Jobs" target="_blank" rel="noopener">Cyberpunk Wiki</a>; tap a mission for its source.</p>`;
 }
 
 function openMission(id) {
   const m = mission(id); const d = isDone(id);
   const s = m.sec ? section(m.sec) : null; const blk = blockers(m); const nx = leadsTo(m);
-  const reqNames = [...(m.after || []), ...(m.any || [])].map(mission).filter(x => x && applies(x));
+  const rq = requirementsOf(m);
+  const reqNames = [...rq.all, ...rq.any].map(mission).filter(x => x && applies(x));
   const anc = anchorOf(m) && mission(anchorOf(m));
   const status = d ? `<div class="okbox">Done ✓</div>`
     : isMissed(m) ? `<div class="warnbox"><b>✕ Missed.</b> ${esc((m.before || []).map(mission).filter(Boolean).filter(x => isDone(x.id)).map(x => x.name).join(", "))} is done, so this is no longer available.</div>`
@@ -150,14 +152,15 @@ function openMission(id) {
   openSheet(typeLabel(m) + (s ? " · " + s.name : m.line ? " · " + m.line : m.pl ? " · Phantom Liberty" : ""), `
     <div class="detail">
       <div class="name">${esc(m.name)}</div>
-      <div class="line">${[m.giver && `Given by <b>${esc(m.giver)}</b>`, m.district && esc(m.district), m.path && esc(PATH[m.path]), m.line && m.line !== m.giver && `${esc(m.line)}'s story`, m.pl && "Phantom Liberty"].filter(Boolean).map(x => `<span>${x}</span>`).join("<span>·</span>")}</div>
+      <div class="line">${[m.giver && `${m.type === "gig" ? "Fixer" : "Given by"} <b>${esc(m.giver)}</b>`, m.tier && `Tier ${m.tier}`, m.district && esc(m.district), m.path && esc(PATH[m.path]), m.line && m.line !== m.giver && `${esc(m.line)}'s story`, m.pl && "Phantom Liberty"].filter(Boolean).map(x => `<span>${x}</span>`).join("<span>·</span>")}</div>
       ${status}
       ${before.length && !d && !isMissed(m) ? `<div class="warnbox"><b>⏳ Deadline.</b> Do this before ${plist(before)}, or it's lost.</div>` : ""}
       ${firsts.length && !d ? `<div class="warnbox"><b>⏳ Finish these first</b> — starting or finishing ${esc(m.name)} makes them unavailable: ${plist(firsts)}.</div>` : ""}
       ${m.pnr && !d ? (() => { const lo = lockedOutBy(m); return `<div class="warnbox"><b>⛔ Point of no return.</b> ${lo.length ? `${lo.length} unfinished mission${lo.length > 1 ? "s" : ""} can't be done after this${lo.length <= 8 ? ": " + esc(lo.map(x => x.name).join(", ")) : ""}.` : "Everything else is finished."}</div>`; })() : ""}
+      ${m.obj ? `<div class="k-h">Objective</div><p style="margin:0 0 8px">${esc(m.obj)}</p>` : ""}
       ${m.note ? `<div class="eff">${esc(m.note)}</div>` : ""}
       ${items ? `<div class="k-h">Rewards & unique items</div><ul class="ilist">${items}</ul>${(m.items || []).some(i => i.miss) ? `<p class="hint" style="margin:0 0 8px">Missable items can only be picked up during this mission.</p>` : ""}` : ""}
-      ${reqNames.length ? `<div class="k-h">${m.any && m.any.length && !(m.after || []).length ? "Follows one of" : "Requires"}</div><p style="margin:0 0 8px">${plist(reqNames)}</p>` : ""}
+      ${reqNames.length ? `<div class="k-h">${rq.any.length && !rq.all.length ? "Follows one of" : m.type === "gig" && !(m.after || []).length ? `Unlocks after tier ${m.tier - 1}` : "Requires"}</div><p style="margin:0 0 8px">${plist(reqNames)}</p>` : ""}
       ${anc ? `<div class="k-h">Opens up</div><p style="margin:0 0 8px">After ${plist([anc])} <span class="hint">(estimated: the wiki lists no prerequisite, and this is when its area opens)</span></p>` : ""}
       ${m.ext && m.ext.length ? `<div class="k-h">Also needs</div><p style="margin:0 0 8px">${esc(m.ext.join("; "))} <span class="hint">(not tracked in the app yet)</span></p>` : ""}
       ${nx.length ? `<div class="k-h">Leads to</div><p style="margin:0 0 8px">${plist(nx)}</p>` : ""}
