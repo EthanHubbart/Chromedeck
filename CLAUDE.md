@@ -85,6 +85,7 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
 - Lifepath-only side jobs use `branch:["lifepath", …]`.
 - Gigs: `giver` = fixer, `tier` = fixer tier. Gigs whose wiki page lists predecessors use those as `after`; the rest unlock when every gig of the fixer's previous tier (same fixer and district) is done, computed by `tierReqs()`. Tier-1 gigs get the estimated anchor. Fixer thank-you side jobs (Last Call etc.) list all of that fixer's gigs in `after`.
 - Act 2's concurrent threads are drawn as lanes in `threadCard()` (js/views/journal.js): Evelyn → Voodoo Boys (paths evelyn + alt, one sequential lane), Hellman, Takemura. Cross-thread requirements are listed under the card. Story sections can interleave in the plan (Phantom Liberty opens mid-Act 2), so a resumed section gets a "(continued)" header.
+- The list has a search box (name, giver, line, district, objective; includes finished and missed) and two layouts: **Order** (recommended order with story headers) and **By storyline** (collapsible groups from `groupOf()`, ordered by `groupRank()`; open groups remembered in `S.ui.journal.open`). Typing only redraws `#jList` so the search box keeps focus.
 - System › "To check in game" lists every entry with `verified:false` plus `GENERAL_CHECKS` (rules not tied to one entry). When the owner answers one, fix the data and drop the flag.
 
 ## UI conventions

@@ -304,3 +304,18 @@ details.mends>summary small{display:block;font-size:12px;color:var(--muted)}
 .chk small{display:block;font-size:13px;color:var(--muted);line-height:1.35;margin-top:2px}
 .msec.cont{padding-top:10px}
 .msec.cont b{color:var(--cyan-dim)}
+
+/* journal: layout switch and storyline groups */
+.seg.jmode{display:grid;grid-template-columns:1fr 1fr;width:100%;margin:0 0 8px}
+.seg.jmode button{min-height:40px}
+details.grp{border-top:1px solid var(--line2)}
+details.grp>summary{list-style:none;cursor:pointer;display:flex;align-items:center;gap:10px;padding:10px 0;min-height:48px}
+details.grp>summary::-webkit-details-marker{display:none}
+details.grp>summary::before{content:"▸";color:var(--cyan);width:12px;flex-shrink:0}
+details.grp[open]>summary::before{content:"▾"}
+details.grp .gt{flex:1;min-width:0}
+details.grp .gt b{display:block;font-size:15px}
+details.grp .gt small{display:block;font-size:12px;color:var(--muted)}
+details.grp .gbar{width:56px;height:5px;background:#142129;flex-shrink:0}
+details.grp .gbar em{display:block;height:100%;background:var(--yellow)}
+details.grp[open]{padding-bottom:6px}
