@@ -25,7 +25,7 @@ js/journal.js         mission availability, branches, recommended order (plan), 
 js/ui.js              $, esc, toast, the shared sheet, download/readFile, icons
 js/views/*.js         one module per screen: export a render function plus optional click/input/change handlers that return true when handled
 data/index.js         assembles SEED from core.js, perks.js, cyberware.js, missions.js; holds the data `version`
-data/missions.js      missionSections + missions (Main Jobs so far); field meanings are in its header comment
+data/missions.js      missionSections + missions (Main Jobs, Side Jobs incl. the wiki's Minor Jobs); field meanings are in its header comment
 data/examples.js      starter builds, used only when there are no saved builds
 icons/                icon.svg (source) and rendered PNGs
 chromedeck.html       the original single-file planner, kept so old saves can be exported from it; not part of the app
@@ -77,7 +77,12 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
 - Story branches are `branch:[choice, value]`, driven by `S.playthrough.choices` (lifepath, pl, plEnd). Checking off a branch mission sets the choice.
 - The point-of-no-return mission (`pnr`) only affects the recommended order and warnings. Availability ("Locked / Available") uses the game's real requirements only.
 - Progress: done missions in `S.playthrough.missions` ({id: timestamp}); a custom order in `S.playthrough.order` (empty = recommended).
-- "Done, plus everything before it" marks the mission's transitive requirements, never unrelated side content.
+- "Done, plus everything before it" marks the mission's transitive requirements, never unrelated side content or estimated anchors.
+- Side jobs have no `sec`; section headers follow the main story. With no custom order, ready side jobs are placed before the next main job (do side content as it unlocks); finished missions are listed first, in story order.
+- `before:[ids]` = deadline: the mission is lost once any of those is done (shown as Missed). Only add deadlines the wiki states ("becomes unavailable after…", "fails if not completed before…").
+- Side jobs with no wiki prerequisite get an estimated anchor in `anchorOf()` (Watson → The Rescue, rest of the city → Playing for Time, Phantom Liberty → Dog Eat Dog). It's labelled as an estimate, never auto-marked done, and never written into the data.
+- `ext` = requirements the app can't track yet (text). Missions with `ext` never show as available.
+- Lifepath-only side jobs use `branch:["lifepath", …]`.
 
 ## UI conventions
 
@@ -89,7 +94,7 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
 ## Roadmap
 
 1. **Foundation (done):** multi-file PWA, design system, and a port of the existing planner (capacity, cyberware, perks, builds, shards) with the data moved to `data/`. Hosting is still pending: GitHub Pages needs the repo to be public.
-2. **Missions and missables:** every Main Job, Side Job and Gig (base game and Phantom Liberty). Main Jobs are done (batch 1, 64 missions); Side Jobs and Gigs are next. Features:
+2. **Missions and missables:** every Main Job, Side Job and Gig (base game and Phantom Liberty). Done: Main Jobs (64) and Side Jobs (133: the wiki's 46 Side Jobs + 87 Minor Jobs, all under Side Jobs in the game). Gigs are next; when they land, turn the `ext` gig references into real `after` ids. Features:
    - a recommended order for story flow and missable safety, which updates as missions are checked off,
    - manual reordering that warns about risks,
    - the unique items tied to each mission,
