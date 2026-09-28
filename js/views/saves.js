@@ -47,7 +47,7 @@ function formHtml() {
   return `<div class="detail">
     <div class="field stack"><div class="k">Name</div><div class="v"><input id="svName" type="text" maxlength="40" value="${esc(f.name)}" placeholder="${isNew ? `Save ${S.saves.length + 1}` : ""}" autocomplete="off" aria-label="Save name"></div></div>
     ${isNew || own ? segs(f) + `<p class="hint" style="margin:4px 0 0">Body type and voice decide who V can romance: Judy needs both feminine, River a feminine body, Panam a masculine body, Kerry both masculine (Cyberpunk Wiki, Romance). Body type also picks which clothing pictures you see.</p>` : ""}
-    ${isNew ? `<div class="okbox">Starts a fresh playthrough: no missions, collectibles or owned items. Your builds and your current save are kept.</div>` : ""}
+    ${isNew ? `<div class="okbox">Starts a fresh playthrough: no missions, collectibles, owned items or outfits. Only your builds carry over, and your current save stays in the list.</div>` : ""}
     <div class="btnrow"><button class="btn pri" id="svOk">${isNew ? "Start new save" : "Save changes"}</button><button class="btn" id="svBack">Back</button></div>
   </div>`;
 }

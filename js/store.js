@@ -176,7 +176,10 @@ function normalizePlaythrough(P) {
   if (!Array.isArray(P.order)) P.order = [];                                  // user's custom mission order (ids), empty = recommended
   if (!P.weapons || typeof P.weapons !== "object") P.weapons = {};             // {weaponId: timestamp owned}
   if (!P.vehicles || typeof P.vehicles !== "object") P.vehicles = {};           // {vehicleId: timestamp owned}
-  for (const k of ["tarot", "psychos", "psychoKilled", "airdrops", "relic", "apartments", "clothes"]) if (!P[k] || typeof P[k] !== "object") P[k] = {};   // {id: timestamp} (psychoKilled: {id: true})
+  for (const k of ["tarot", "psychos", "psychoKilled", "airdrops", "relic", "apartments", "clothes"]) if (!P[k] || typeof P[k] !== "object") P[k] = {};
+  // outfits: named looks for this playthrough, {id, name, slots: {slot: clothingId}}
+  if (!Array.isArray(P.outfits) || !P.outfits.length) P.outfits = [{ id: uid(), name: "Outfit 1", slots: {} }];
+  if (DATA.clothing) { const ok = new Set(DATA.clothing.map(c => c.id)); P.outfits.forEach(o => { o.slots = o.slots || {}; for (const k in o.slots) if (!ok.has(o.slots[k])) delete o.slots[k]; }); }   // {id: timestamp} (psychoKilled: {id: true})
   const prune = (list, obj) => { if (!list) return; const ok = new Set(list.map(x => x.id)); for (const id in obj) if (!ok.has(id)) delete obj[id]; };
   prune(DATA.tarot, P.tarot); prune(DATA.cyberpsychos, P.psychos); prune(DATA.cyberpsychos, P.psychoKilled); prune(DATA.airdrops, P.airdrops); prune(DATA.relicTerminals, P.relic); prune(DATA.apartments, P.apartments);
   prune(DATA.vehicles, P.vehicles); prune(DATA.weapons, P.weapons); prune(DATA.missions, P.missions); prune(DATA.clothing, P.clothes);
@@ -212,6 +215,8 @@ export function renameSave(id, name) { const sv = S.saves.find(x => x.id === id)
 
 export function normalize() {
   if (!S.playthrough) S.playthrough = {};
+  // 0.12.0 kept outfits for all saves in S.outfits; they belong to the save that was loaded
+  if (Array.isArray(S.outfits)) { if (S.outfits.length) S.playthrough.outfits = S.outfits; delete S.outfits; }
   normalizePlaythrough(S.playthrough);
   // saves: older states had one playthrough and no list; it becomes "Save 1"
   if (!Array.isArray(S.saves) || !S.saves.length) { S.saves = [{ id: uid(), name: "Save 1", created: Date.now() }]; S.activeSave = S.saves[0].id; }
@@ -233,10 +238,7 @@ export function normalize() {
   if (!S.ui.vehicles) S.ui.vehicles = { kind: "all", src: "all", q: "", hideOwned: false };
   if (!S.ui.collect) S.ui.collect = { kind: "tarot", hideDone: false };
   if (!S.ui.wardrobe) S.ui.wardrobe = { mode: "outfits", slot: "all", q: "", hideOwned: false, outfit: null };
-  // outfits: named looks shared by every save, {id, name, slots: {slot: clothingId}}
-  if (!Array.isArray(S.outfits) || !S.outfits.length) S.outfits = [{ id: uid(), name: "Outfit 1", slots: {} }];
-  if (DATA.clothing) { const ok = new Set(DATA.clothing.map(c => c.id)); S.outfits.forEach(o => { o.slots = o.slots || {}; for (const k in o.slots) if (!ok.has(o.slots[k])) delete o.slots[k]; }); }
-  if (!S.outfits.some(o => o.id === S.ui.wardrobe.outfit)) S.ui.wardrobe.outfit = S.outfits[0].id;
+  if (!S.playthrough.outfits.some(o => o.id === S.ui.wardrobe.outfit)) S.ui.wardrobe.outfit = S.playthrough.outfits[0].id;
   if (!S.builds.length) { S.builds.push(newBuild("Build 1")); }
   const d = newBuild();
   S.builds.forEach(b => {
