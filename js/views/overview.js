@@ -8,6 +8,7 @@ import { tally, killedCount, KINDS } from "./collectibles.js";
 import { vehicleTally } from "./collection.js";
 import { $, esc } from "../ui.js";
 import { saveStrip } from "./saves.js";
+import { clothingTally } from "./wardrobe.js";
 import { go } from "../app.js";
 
 function rows() {
@@ -22,7 +23,8 @@ function rows() {
       { label: "Ending paths", done: pr.pathDone, total: pr.pathTotal, go: "journal" }
     ] },
     { h: "Gear", items: [
-      { label: "Iconic weapons", done: ic.filter(w => S.playthrough.weapons[w.id]).length, total: ic.length, go: "gear:weapons" }
+      { label: "Iconic weapons", done: ic.filter(w => S.playthrough.weapons[w.id]).length, total: ic.length, go: "gear:weapons" },
+      { label: "Clothing", ...clothingTally(), go: "gear:wardrobe" }
     ] },
     { h: "Collection", items: [
       { label: "Vehicles", ...vehicleTally(), go: "collection:vehicles" },

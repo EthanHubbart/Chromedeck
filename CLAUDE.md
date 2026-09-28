@@ -28,17 +28,19 @@ js/views/weapons.js   Gear › Weapons (list, filters, iconic tracking, detail);
 js/views/collection.js  Collection › Vehicles; exports vehiclesFrom() for the Journal and vehicleTally()
 js/views/collectibles.js  Collection › Collectibles (Tarot, Cyberpsychos, Airdrops, Relic switch) and Homes; KINDS config, tally()
 js/views/overview.js  Collection › Overview: the completion dashboard across Journal, Gear and Collection
+js/views/wardrobe.js  Gear › Wardrobe: clothing list grouped slot › model › variants, and the outfit builder on the V silhouette; clothingTally(), clothesFrom()
 js/views/saves.js     Saves sheet (up to 5 playthroughs: new, load, rename/edit, delete) and saveStrip(); V_OPTS, vSummary()
 js/views/*.js         one module per screen: export a render function plus optional click/input/change handlers that return true when handled
 data/index.js         assembles SEED from core.js, perks.js, cyberware.js, missions.js; holds the data `version`
 data/missions.js      missionSections + missions (Main Jobs, Side Jobs incl. the wiki's Minor Jobs, Gigs); field meanings are in its header comment
 data/weapons.js       every weapon (197, 114 iconic) with stats, where to get it, mission links, picture URL
 data/vehicles.js      every ownable car and motorcycle (87) with how to get it, Autofixer price/requirements, specs
+data/clothing.js      every clothing page (1531; 177 models with variants + 140 unique), intrinsic-mod texts, named vendors' locations
 data/collectibles.js  Tarot graffiti (26), Cyberpsycho Sightings (17), PL airdrops (16 + 3 treasures), Relic terminals (9), apartments (6 + 4 romance)
 icons/                icon.svg (source) and rendered PNGs
 ```
 
-Navigation (chosen by the owner, left to right): **Character** (sub-tabs Cyberware, Perks, Capacity, Builds), **Gear** (sub-tabs Weapons, Wardrobe), **Collection** (sub-tabs Overview, Vehicles, Collectibles, Homes), **Journal**, **System**. Character-specific screens stay toward the left. Tabs with sub-tabs remember the last one per tab in `S.ui.subs`. The tab list lives in `TABS` in `js/app.js` and `UI_TABS` in `js/store.js`; keep them in sync. New modules replace the placeholders in `js/views/soon.js`. Only the visible view renders; `renderAll()` redraws nav, header and the current view.
+Navigation (chosen by the owner, left to right): **Character** (sub-tabs Cyberware, Perks, Capacity, Builds), **Gear** (sub-tabs Weapons, Wardrobe), **Collection** (sub-tabs Overview, Vehicles, Collectibles, Homes), **Journal**, **System**. Character-specific screens stay toward the left. Tabs with sub-tabs remember the last one per tab in `S.ui.subs`. The tab list lives in `TABS` in `js/app.js` and `UI_TABS` in `js/store.js`; keep them in sync. Only the visible view renders; `renderAll()` redraws nav, header and the current view.
 
 Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, and add new files to `APP_FILES`. Installed copies show an "Update" banner when a new version is live.
 
@@ -60,7 +62,7 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
 - Item pictures (mainly clothing) are loaded at view time from the Cyberpunk wiki URL stored on the entry (`img`). They're cached on the device for offline use, never committed. Each one is credited "Image: Cyberpunk Wiki / CD PROJEKT RED". If an image fails to load, show a slot icon.
 - Always render them with `wikiImg()` / `wikiThumb()` from `js/ui.js`. Fandom's image server answers requests carrying another site's referrer with a "not found" placeholder, so the page sets `<meta name="referrer" content="no-referrer">` and images load with `referrerpolicy="no-referrer"`. `wikiThumb()` asks for a 400px-wide copy (`/scale-to-width-down/400`), a fraction of the full file.
 - The service worker (`wikiImage()` in `sw.js`) fetches them with CORS, keeps only real pictures (never error pages), and gives up after 15 s. Bump `IMAGES` in `sw.js` if bad copies ever get cached (and `CACHE` in `js/offline.js`, which must match).
-- System › Offline pictures (`js/offline.js`) downloads every picture at once into that cache, 4 at a time, skipping ones already saved. A new list with pictures must be added to `AVG_KB` there (rough KB per picture, for the size estimate). At 0.10.0: 308 pictures, about 7 MB.
+- System › Offline pictures (`js/offline.js`) downloads every picture at once into that cache, 4 at a time, skipping ones already saved. A new list with pictures must be added to `AVG_KB` there (rough KB per picture, for the size estimate). At 0.12.0: 308 + 1531 clothing renders for the save's body type (both if unset), about 7 + 18 MB.
 - Clothing pages (`Infobox Clothing`, 1531 pages) have `imagef` and `imagem`: renders of the item alone for each body type, 200×200 with a transparent background, about 12 KB each.
 - This relies on CD PROJEKT RED's [Fan Content Guidelines](https://www.cdprojektred.com/en/fan-content). The app must stay free and non-commercial, and shows a footer disclaimer that it's an unofficial fan project.
 
@@ -114,6 +116,15 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
 - From the wiki "Cyberpunk 2077 Vehicles" page's Ownable Vehicles tables (source + notes) and each vehicle's `Infobox Vehicle`. No game ids exist, so `id` is built from the name; never change it.
 - `from` links to missions; `dep` = the reward depends on a choice (note says what); lifepath-only via `branch`. Owned: `S.playthrough.vehicles`.
 
+## Clothing data
+
+- `data/clothing.js` is generated from each page's `Infobox Clothing` and Acquisition section (1531 pages transcluding the template). `id` = the wiki baseid. `get` = infobox source; `how` = Acquisition text only when it says more than "buy it from X"; named vendors' places are in `clothingVendors`.
+- Variants: ids `Type_NN_(basic|old|rich)_NN` share one model `Type_NN` (same mesh, other colours/finishes; checked by viewing the renders). `modelOf()` in `js/views/wardrobe.js` groups them; the group's display name is the word run most variant names share (`label()`).
+- `temp` = only worn during a mission and not kept (Acquisition says "not kept", "permanently lost", "temporarily given", "only worn by"); `limited` = Twitch drop / GOG reward. Neither is counted or offered in the outfit picker.
+- `from`/`miss`/`dep` come from mission links in the source/Acquisition and from `items` in data/missions.js. The wiki's duplicate baseid for "Faded shorts" was changed to the id its pictures use (unverified, with `check`).
+- Pictures: `f`/`m` are paths under the wiki image store (MD5 folders), built into full URLs by `picUrl()`; which one shows follows the save's body type (masculine until set). Lazy loading only in the long list; sheets load right away.
+- Owned: `S.playthrough.clothes` ({id: timestamp}). Outfits: `S.outfits` = [{id, name, slots:{slot: clothingId}}], shared by all saves (like builds); current one in `S.ui.wardrobe.outfit`. UI: `S.ui.wardrobe` (`mode` outfits|list, `slot`, `q`, `hideOwned`).
+
 ## Collectibles data
 
 - `data/collectibles.js`, from the wiki pages in each `src` (Tarot Cards, Fool on the Hill, Psycho Killer + each Cyberpsycho Sighting page, Airdrops, Relic (attribute), Apartments + Welcome Home pages).
@@ -138,7 +149,7 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
    - the unique items tied to each mission,
    - points of no return, in plain words.
 3. **Weapons and vehicles (done):** Gear › Weapons and Collection › Vehicles.
-4. **Wardrobe (Gear › Wardrobe):** full clothing list with slot, stats and location (exact where static), plus an outfit builder on the V silhouette.
+4. **Wardrobe (done, 0.12.0):** full clothing list (slot › model › variants, where to get it, intrinsic mods) and the outfit builder on the V silhouette.
 5. **Collection:** done: vehicles, Tarot graffiti, Cyberpsycho Sightings, Phantom Liberty airdrops, Relic terminals, apartments, and the completion dashboard (Overview). Still to do: romances, achievements.
 
 ## Checking changes

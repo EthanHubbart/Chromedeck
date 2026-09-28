@@ -15,7 +15,8 @@ function checksHtml() {
   const rows = [
     ...GENERAL_CHECKS.map(c => ({ label: "Perk rule", text: c.text, attr: c.perk ? `data-perk="${c.perk}"` : "" })),
     ...DATA.perks.filter(p => p.verified === false).map(p => ({ label: "Perk · " + p.name, text: p.check, attr: `data-perk="${p.id}"` })),
-    ...(DATA.missions || []).filter(m => m.verified === false).map(m => ({ label: "Mission · " + m.name, text: m.check, attr: `data-mission="${m.id}"` }))
+    ...(DATA.missions || []).filter(m => m.verified === false).map(m => ({ label: "Mission · " + m.name, text: m.check, attr: `data-mission="${m.id}"` })),
+    ...(DATA.clothing || []).filter(c => c.verified === false).map(c => ({ label: "Clothing · " + c.name, text: c.check, attr: `data-cwitem="${c.id}"` }))
   ];
   return `<div class="panel"><div class="ph"><h2>To check in game</h2><span class="meta">${rows.length} open</span></div><div class="pb">
     <p class="hint" style="margin:0 0 6px">Things the wiki doesn't settle. Tell me what you see and I'll fix the data.</p>
@@ -73,7 +74,8 @@ export function renderSystem() {
     <p class="hint" style="margin:0 0 6px">Chromedeck is an unofficial, free fan project for Cyberpunk 2077 (patch 2.31, Phantom Liberty included). It isn't affiliated with or endorsed by CD PROJEKT RED. Cyberpunk 2077 and related names are trademarks of CD PROJEKT S.A.</p>
     <p class="hint" style="margin:0">Game facts are checked against the <a href="https://cyberpunk.fandom.com/wiki/Cyberpunk_Wiki" target="_blank" rel="noopener">Cyberpunk Wiki</a>. Spot something wrong? Fix it in Game data or note it for the next update.</p>
   </div></div>`;
-  $("#dRaw").value = JSON.stringify(DATA, null, 1);
+  // the full data is large (clothing alone is ~0.5 MB), so only fill the editor when it's opened
+  $("details.adv").addEventListener("toggle", e => { if (e.target.open && !$("#dRaw").value) $("#dRaw").value = JSON.stringify(DATA, null, 1); });
   renderPictures();
 }
 

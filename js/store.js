@@ -90,7 +90,7 @@ export function validateData(d) {
     const vids = new Set();
     for (const v of d.vehicles) { if (!v.id || !v.name || !v.kind) return `Vehicle "${v.name || v.id || "?"}" needs id, name and kind.`; if (vids.has(v.id)) return `Duplicate vehicle id "${v.id}".`; vids.add(v.id); }
   }
-  for (const k of ["tarot", "cyberpsychos", "airdrops", "relicTerminals", "apartments"]) {
+  for (const k of ["tarot", "cyberpsychos", "airdrops", "relicTerminals", "apartments", "clothing"]) {
     if (d[k] === undefined) continue;
     if (!Array.isArray(d[k])) return `${k} must be a list.`;
     const seen = new Set();
@@ -176,10 +176,10 @@ function normalizePlaythrough(P) {
   if (!Array.isArray(P.order)) P.order = [];                                  // user's custom mission order (ids), empty = recommended
   if (!P.weapons || typeof P.weapons !== "object") P.weapons = {};             // {weaponId: timestamp owned}
   if (!P.vehicles || typeof P.vehicles !== "object") P.vehicles = {};           // {vehicleId: timestamp owned}
-  for (const k of ["tarot", "psychos", "psychoKilled", "airdrops", "relic", "apartments"]) if (!P[k] || typeof P[k] !== "object") P[k] = {};   // {id: timestamp} (psychoKilled: {id: true})
+  for (const k of ["tarot", "psychos", "psychoKilled", "airdrops", "relic", "apartments", "clothes"]) if (!P[k] || typeof P[k] !== "object") P[k] = {};   // {id: timestamp} (psychoKilled: {id: true})
   const prune = (list, obj) => { if (!list) return; const ok = new Set(list.map(x => x.id)); for (const id in obj) if (!ok.has(id)) delete obj[id]; };
   prune(DATA.tarot, P.tarot); prune(DATA.cyberpsychos, P.psychos); prune(DATA.cyberpsychos, P.psychoKilled); prune(DATA.airdrops, P.airdrops); prune(DATA.relicTerminals, P.relic); prune(DATA.apartments, P.apartments);
-  prune(DATA.vehicles, P.vehicles); prune(DATA.weapons, P.weapons); prune(DATA.missions, P.missions);
+  prune(DATA.vehicles, P.vehicles); prune(DATA.weapons, P.weapons); prune(DATA.missions, P.missions); prune(DATA.clothing, P.clothes);
   if (DATA.missions) { const ok = new Set(DATA.missions.map(m => m.id)); P.order = P.order.filter(id => ok.has(id)); }
 }
 
@@ -232,6 +232,11 @@ export function normalize() {
   if (!S.ui.weapons) S.ui.weapons = { show: "iconic", type: "all", q: "", hideOwned: false };
   if (!S.ui.vehicles) S.ui.vehicles = { kind: "all", src: "all", q: "", hideOwned: false };
   if (!S.ui.collect) S.ui.collect = { kind: "tarot", hideDone: false };
+  if (!S.ui.wardrobe) S.ui.wardrobe = { mode: "outfits", slot: "all", q: "", hideOwned: false, outfit: null };
+  // outfits: named looks shared by every save, {id, name, slots: {slot: clothingId}}
+  if (!Array.isArray(S.outfits) || !S.outfits.length) S.outfits = [{ id: uid(), name: "Outfit 1", slots: {} }];
+  if (DATA.clothing) { const ok = new Set(DATA.clothing.map(c => c.id)); S.outfits.forEach(o => { o.slots = o.slots || {}; for (const k in o.slots) if (!ok.has(o.slots[k])) delete o.slots[k]; }); }
+  if (!S.outfits.some(o => o.id === S.ui.wardrobe.outfit)) S.ui.wardrobe.outfit = S.outfits[0].id;
   if (!S.builds.length) { S.builds.push(newBuild("Build 1")); }
   const d = newBuild();
   S.builds.forEach(b => {
