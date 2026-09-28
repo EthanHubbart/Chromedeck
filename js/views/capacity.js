@@ -2,14 +2,14 @@
    Where cyberware capacity comes from, the character inputs that feed it, and
    the playthrough shard tracker.
    ============================================================================= */
-import { DATA, S, build, save } from "../store.js";
+import { DATA, S, current, isLive, build, save } from "../store.js";
 import { calc, derived } from "../rules.js";
 import { $, esc, groupBy } from "../ui.js";
 import { renderAll, renderHeader, go } from "../app.js";
 import { UI as PERK_UI } from "./perks.js";
 
 export function renderCapacity(){
-  const b = build(); const r = calc(b); const C = DATA.capacity;
+  const b = current(); const r = calc(b); const C = DATA.capacity;
   const shardCards = groupBy(DATA.shards, s=>s.group);
   let shardHtml = "";
   for(const [g, list] of shardCards){
@@ -23,7 +23,8 @@ export function renderCapacity(){
   }
   const engIdx = (b.engineering|0)>=30?2:(b.engineering|0)>=10?1:0; const D=derived(b);
   $("#v-capacity").innerHTML = `
-  <div class="panel"><div class="ph"><h2>Capacity sources</h2><span class="meta">this build</span></div><div class="pb">
+  <div class="panel"><div class="ph"><h2>Capacity sources</h2><span class="meta">${isLive()?"live, this save":"this build"}</span></div><div class="pb">
+    ${isLive()?(()=>{ const pb=build(), pr=calc(pb); return `<p class="hint goalline" style="margin:0 0 6px">◆ Planner "${esc(pb.name)}" needs ${pr.used} of ${pr.normal} capacity at level ${pr.lvl}; you have ${r.normal} now.</p>`; })():""}
     <table class="sum">
       <tr><td>Level ${r.lvl} <span class="hint">(${C.base} + ${C.perLevel} × level)</span></td><td class="num">${r.base}</td></tr>
       <tr class="${r.eng?"":"dim"}"><td>Engineering skill</td><td class="num">+${r.eng}</td></tr>
@@ -42,7 +43,7 @@ export function renderCapacity(){
     <div class="field"><div class="k">Engineering skill<small>+5 at 10, +10 at 30</small></div><div class="v"><div class="seg" data-f="engineering">
       <button data-v="0" class="${engIdx===0?"on":""}">&lt;10</button><button data-v="10" class="${engIdx===1?"on":""}">10</button><button data-v="30" class="${engIdx===2?"on":""}">30</button></div></div></div>
     <div class="field"><div class="k">Chrome Compressor bonus<small>only counts while it's in the OS slot. T2 40 … T5++ 70</small></div><div class="v"><input type="number" min="40" max="70" step="1" value="${b.ccBonus}" data-f="ccBonus" aria-label="Chrome Compressor bonus"></div></div>
-    <div class="field"><div class="k">Shards in this build<small>plan against the maximum, or against what you've actually found</small></div><div class="v"><div class="seg" data-f="shardMode"><button data-v="max" class="${b.shardMode==="max"?"on":""}">Max</button><button data-v="tracked" class="${b.shardMode==="tracked"?"on":""}">Tracked</button></div></div></div>
+    ${isLive()?"":`<div class="field"><div class="k">Shards in this build<small>plan against the maximum, or against what you've actually found</small></div><div class="v"><div class="seg" data-f="shardMode"><button data-v="max" class="${b.shardMode==="max"?"on":""}">Max</button><button data-v="tracked" class="${b.shardMode==="tracked"?"on":""}">Tracked</button></div></div></div>`}
   </div></div>
 
   <div class="panel"><div class="ph"><h2>Perks that change capacity</h2><span class="meta">from the Perks tab</span></div><div class="pb">

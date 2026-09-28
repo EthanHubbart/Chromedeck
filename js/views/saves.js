@@ -29,7 +29,7 @@ function segs(f) {
 function listHtml() {
   const full = S.saves.length >= MAX_SAVES;
   return `<div class="detail">
-    <p class="hint" style="margin:0 0 8px">Each save keeps its own progress and V. Your builds are shared by all saves.</p>
+    <p class="hint" style="margin:0 0 8px">Each save keeps its own progress, its Live V (what you have in game) and outfits. Planner builds are shared by all saves.</p>
     ${S.saves.map(sv => {
       const P = runOf(sv.id); const on = sv.id === S.activeSave; const n = Object.keys(P.missions).length;
       return `<div class="saverow ${on ? "on" : ""}">
@@ -47,7 +47,7 @@ function formHtml() {
   return `<div class="detail">
     <div class="field stack"><div class="k">Name</div><div class="v"><input id="svName" type="text" maxlength="40" value="${esc(f.name)}" placeholder="${isNew ? `Save ${S.saves.length + 1}` : ""}" autocomplete="off" aria-label="Save name"></div></div>
     ${isNew || own ? segs(f) + `<p class="hint" style="margin:4px 0 0">Body type and voice decide who V can romance: Judy needs both feminine, River a feminine body, Panam a masculine body, Kerry both masculine (Cyberpunk Wiki, Romance). Body type also picks which clothing pictures you see.</p>` : ""}
-    ${isNew ? `<div class="okbox">Starts a fresh playthrough: no missions, collectibles, owned items or outfits. Only your builds carry over, and your current save stays in the list.</div>` : ""}
+    ${isNew ? `<div class="okbox">Starts a fresh playthrough: no missions, collectibles, owned items or outfits, and a Live V at level 1 with nothing installed. Only your planner builds carry over; your current save stays in the list.</div>` : ""}
     <div class="btnrow"><button class="btn pri" id="svOk">${isNew ? "Start new save" : "Save changes"}</button><button class="btn" id="svBack">Back</button></div>
   </div>`;
 }

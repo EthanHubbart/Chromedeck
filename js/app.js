@@ -3,7 +3,7 @@
    a render function plus optional click / input / change handlers that return
    true when they handled the event.
    =================================================================== */
-import { S, build, save, loadState, restoreBackup, takeLoadNote } from "./store.js";
+import { S, build, current, isLive, setPlanner, save, loadState, restoreBackup, takeLoadNote } from "./store.js";
 import { calc } from "./rules.js";
 import { $, $$, esc, toast, icon, closeSheet, sheetOpen } from "./ui.js";
 import * as cyber from "./views/cyberware.js";
@@ -19,7 +19,7 @@ import * as overview from "./views/overview.js";
 import * as saves from "./views/saves.js";
 import * as wardrobe from "./views/wardrobe.js";
 
-export const APP_VERSION = "0.12.1";   // keep in step with CACHE in sw.js
+export const APP_VERSION = "0.13.0";   // keep in step with CACHE in sw.js
 
 /* ---------- navigation ---------- */
 /* Bottom tabs, left to right. A tab with `subs` shows sub-tabs across the top
@@ -63,8 +63,10 @@ export function renderHeader() {
   const isChar = S.ui.tab === "character";
   $("#buildbar").hidden = !isChar; $("#gauge").hidden = !isChar;
   if (!isChar) return;
-  const b = build(); const r = calc(b);
-  $("#buildSel").innerHTML = S.builds.map(x => `<option value="${x.id}"${x.id === b.id ? " selected" : ""}>${esc(x.name)}</option>`).join("");
+  const plan = build(); const b = current(); const r = calc(b); const live = isLive();
+  $("#modeSeg").innerHTML = [["live", "Live"], ["planner", "Planner"]].map(([k, l]) => `<button data-cmode="${k}" class="${S.ui.charMode === k ? "on" : ""}" aria-pressed="${S.ui.charMode === k}">${l}</button>`).join("");
+  $("#buildLbl").textContent = live ? "Goal" : "Build";
+  $("#buildSel").innerHTML = S.builds.map(x => `<option value="${x.id}"${x.id === plan.id ? " selected" : ""}>${esc(x.name)}</option>`).join("");
   const N = 40; const perSeg = r.limit / N;
   let segs = "";
   for (let i = 0; i < N; i++) {
@@ -82,7 +84,7 @@ export function renderHeader() {
   $("#gauge").innerHTML = `
     <div class="row"><span class="title">Cyberware capacity</span><span class="val ${r.invalid ? "warn" : ""} num">${r.used} <small>/ ${r.normal}${r.over ? ` (+${r.over})` : ""}</small></span></div>
     <div class="segs" role="meter" aria-label="Cyberware capacity used" aria-valuemin="0" aria-valuemax="${r.limit}" aria-valuenow="${r.used}">${segs}</div>
-    <div class="sub"><span>Level ${r.lvl} · ${r.shards.used} from shards${r.cc ? ` · +${r.cc} Chrome Compressor` : ""}</span><span class="num">${status}</span></div>`;
+    <div class="sub"><span>${live ? "Live · " : ""}Level ${r.lvl} · ${r.shards.used} from shards${r.cc ? ` · +${r.cc} Chrome Compressor` : ""}</span><span class="num">${status}</span></div>`;
 }
 
 /* Re-render what's on screen. Hidden views render when you switch to them. */
@@ -103,14 +105,15 @@ document.addEventListener("click", e => {
   if (t.dataset.tab) { go(t.dataset.tab); return; }
   if (t.dataset.sub) { go(S.ui.tab, t.dataset.sub); return; }
   if (t.id === "sheetClose" || t.id === "scrim") { closeSheet(); return; }
+  if (t.dataset.cmode) { S.ui.charMode = t.dataset.cmode; save(); renderAll(); return; }
   if (t.id === "hdrSave") { toast(save() ? "Saved" : "Saved for this session only — this browser blocks storage"); return; }
-  dispatch("click", t, build());
+  dispatch("click", t, current());
 });
-document.addEventListener("input", e => { dispatch("input", e.target, build()); });
+document.addEventListener("input", e => { dispatch("input", e.target, current()); });
 document.addEventListener("change", e => {
   const t = e.target;
-  if (t.id === "buildSel") { S.active = t.value; save(); renderAll(); return; }
-  dispatch("change", t, build());
+  if (t.id === "buildSel") { setPlanner(t.value); save(); renderAll(); return; }
+  dispatch("change", t, current());
 });
 document.addEventListener("keydown", e => {
   if (e.key === "Escape" && sheetOpen()) { closeSheet(); return; }

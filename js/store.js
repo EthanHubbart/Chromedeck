@@ -117,6 +117,16 @@ export function newBuild(name) {
 }
 export function build() { return S.builds.find(b => b.id === S.active) || S.builds[0]; }
 
+/* ---------- Live vs Planner ----------
+   Planner = the builds (goal templates, shared by every save); S.active is the one picked,
+   and each save remembers its pick in playthrough.goal. Live = what V has right now in this
+   save (playthrough.live, same shape as a build). The Character screens edit current(). */
+export const isLive = () => S.ui.charMode === "live";
+export function current() { return isLive() ? S.playthrough.live : build(); }
+export function setPlanner(id) { S.active = id; S.playthrough.goal = id; }
+export function newLive() { return Object.assign(newBuild("Live"), { id: "live", level: 1, engineering: 0, shardMode: "tracked", bonusPerk: 0 }); }
+function syncGoal() { if (S.builds.some(b => b.id === S.playthrough.goal)) S.active = S.playthrough.goal; else S.playthrough.goal = S.active; }
+
 /* ---------- load ---------- */
 let loadNote = "";
 export const takeLoadNote = () => { const n = loadNote; loadNote = ""; return n; };
@@ -134,7 +144,7 @@ function hydrate(saved) {
     if (err) S.dataEditsSetAside = edits;
   } else {
     // a fresh install starts empty: normalize() adds one blank "Build 1"
-    S = { builds: [], active: null, playthrough: { shards: {} }, dataEdits: err ? {} : edits };
+    S = { builds: [], active: null, playthrough: { shards: {} }, dataEdits: err ? {} : edits, ui: { tab: "character", charMode: "live" } };
   }
   normalize();
 }
@@ -148,7 +158,7 @@ export function restoreBackup(state) {
 }
 export function importBuild(b) {
   if (!b || typeof b !== "object") return false;
-  const nb = clone(b); nb.id = uid(); S.builds.push(nb); S.active = nb.id; normalize(); return true;
+  const nb = clone(b); nb.id = uid(); S.builds.push(nb); setPlanner(nb.id); normalize(); return true;
 }
 
 /* Phase-1 builds stored capacity perks as toggles; turn those into real perks once. */
@@ -177,6 +187,9 @@ function normalizePlaythrough(P) {
   if (!P.weapons || typeof P.weapons !== "object") P.weapons = {};             // {weaponId: timestamp owned}
   if (!P.vehicles || typeof P.vehicles !== "object") P.vehicles = {};           // {vehicleId: timestamp owned}
   for (const k of ["tarot", "psychos", "psychoKilled", "airdrops", "relic", "apartments", "clothes"]) if (!P[k] || typeof P[k] !== "object") P[k] = {};
+  // Live V: level, attributes, perks and cyberware as they are in the game now (starts at level 1, nothing installed)
+  if (!P.live || typeof P.live !== "object") P.live = newLive();
+  P.live.id = "live"; fixBuild(P.live);
   // outfits: named looks for this playthrough, {id, name, slots: {slot: clothingId}}
   if (!Array.isArray(P.outfits) || !P.outfits.length) P.outfits = [{ id: uid(), name: "Outfit 1", slots: {} }];
   if (DATA.clothing) { const ok = new Set(DATA.clothing.map(c => c.id)); P.outfits.forEach(o => { o.slots = o.slots || {}; for (const k in o.slots) if (!ok.has(o.slots[k])) delete o.slots[k]; }); }   // {id: timestamp} (psychoKilled: {id: true})
@@ -197,18 +210,19 @@ export function newSave(name, setup) {
   const P = blankPlaythrough();
   if (setup) { P.choices.lifepath = setup.lifepath || null; P.v.body = setup.body || null; P.v.voice = setup.voice || null; }
   const sv = { id: uid(), name: (name || "").trim() || `Save ${S.saves.length + 1}`, created: Date.now() };
+  P.goal = S.active;   // keep following the same planner build
   S.stash[S.activeSave] = S.playthrough; S.saves.push(sv); S.activeSave = sv.id; S.playthrough = P;
   return sv;
 }
 export function switchSave(id) {
   if (id === S.activeSave || !S.stash[id]) return false;
   S.stash[S.activeSave] = S.playthrough; S.playthrough = S.stash[id]; delete S.stash[id]; S.activeSave = id;
-  return true;
+  syncGoal(); return true;
 }
 export function deleteSave(id) {
   if (S.saves.length < 2) return false;
   S.saves = S.saves.filter(x => x.id !== id); delete S.stash[id];
-  if (id === S.activeSave) { S.activeSave = S.saves[0].id; S.playthrough = S.stash[S.activeSave]; delete S.stash[S.activeSave]; }
+  if (id === S.activeSave) { S.activeSave = S.saves[0].id; S.playthrough = S.stash[S.activeSave]; delete S.stash[S.activeSave]; syncGoal(); }
   return true;
 }
 export function renameSave(id, name) { const sv = S.saves.find(x => x.id === id); if (sv && name.trim()) sv.name = name.trim().slice(0, 40); }
@@ -236,21 +250,24 @@ export function normalize() {
   if (!S.ui.journal.filter) S.ui.journal.filter = "all";
   if (!S.ui.weapons) S.ui.weapons = { show: "iconic", type: "all", q: "", hideOwned: false };
   if (!S.ui.vehicles) S.ui.vehicles = { kind: "all", src: "all", q: "", hideOwned: false };
+  if (!S.ui.charMode) S.ui.charMode = "planner";   // saves from before Live existed keep showing their builds
   if (!S.ui.collect) S.ui.collect = { kind: "tarot", hideDone: false };
   if (!S.ui.wardrobe) S.ui.wardrobe = { mode: "outfits", slot: "all", q: "", hideOwned: false, outfit: null };
   if (!S.playthrough.outfits.some(o => o.id === S.ui.wardrobe.outfit)) S.ui.wardrobe.outfit = S.playthrough.outfits[0].id;
   if (!S.builds.length) { S.builds.push(newBuild("Build 1")); }
-  const d = newBuild();
-  S.builds.forEach(b => {
-    if (typeof b.id !== "string") b.id = uid();
-    for (const k in d) { if (b[k] === undefined && k !== "id") b[k] = clone(d[k]); }
-    migrateFlags(b);
-    // perks: drop ids that no longer exist, and cap levels at the perk's current max (data can change)
-    if (b.perks) for (const id of Object.keys(b.perks)) { const p = DATA.perks.find(x => x.id === id); if (!p) delete b.perks[id]; else if (b.perks[id] > p.max) b.perks[id] = p.max; }
-    b.equipped = b.equipped || {};
-    DATA.slots.forEach(sl => { const n = slotCount(sl, b); const arr = (b.equipped[sl.id] || []).slice(0, n); while (arr.length < n) arr.push(null); b.equipped[sl.id] = arr.map(id => id && cw(id) ? id : null); });
-  });
+  S.builds.forEach(b => { if (typeof b.id !== "string") b.id = uid(); fixBuild(b); });
   if (!S.builds.find(b => b.id === S.active)) S.active = S.builds[0].id;
+  syncGoal();
+}
+/* Fill missing fields, drop perks/cyberware the data no longer has, fit equipped arrays to slot counts. */
+function fixBuild(b) {
+  const d = newBuild();
+  for (const k in d) { if (b[k] === undefined && k !== "id") b[k] = clone(d[k]); }
+  migrateFlags(b);
+  // perks: drop ids that no longer exist, and cap levels at the perk's current max (data can change)
+  if (b.perks) for (const id of Object.keys(b.perks)) { const p = DATA.perks.find(x => x.id === id); if (!p) delete b.perks[id]; else if (b.perks[id] > p.max) b.perks[id] = p.max; }
+  b.equipped = b.equipped || {};
+  DATA.slots.forEach(sl => { const n = slotCount(sl, b); const arr = (b.equipped[sl.id] || []).slice(0, n); while (arr.length < n) arr.push(null); b.equipped[sl.id] = arr.map(id => id && cw(id) ? id : null); });
 }
 
 let asked = false;
