@@ -14,9 +14,11 @@ import * as system from "./views/system.js";
 import * as journal from "./views/journal.js";
 import * as weapons from "./views/weapons.js";
 import * as collection from "./views/collection.js";
+import * as collectibles from "./views/collectibles.js";
+import * as overview from "./views/overview.js";
 import { renderSoon } from "./views/soon.js";
 
-export const APP_VERSION = "0.8.0";   // keep in step with CACHE in sw.js
+export const APP_VERSION = "0.9.0";   // keep in step with CACHE in sw.js
 
 /* ---------- navigation ---------- */
 /* Bottom tabs, left to right. A tab with `subs` shows sub-tabs across the top
@@ -24,17 +26,18 @@ export const APP_VERSION = "0.8.0";   // keep in step with CACHE in sw.js
 const TABS = [
   { id: "character", label: "Character", subs: [["cyberware", "Cyberware"], ["perks", "Perks"], ["capacity", "Capacity"], ["builds", "Builds"]] },
   { id: "gear", label: "Gear", subs: [["weapons", "Weapons"], ["wardrobe", "Wardrobe"]] },
-  { id: "collection", label: "Collection" },
+  { id: "collection", label: "Collection", subs: [["overview", "Overview"], ["vehicles", "Vehicles"], ["collectibles", "Collectibles"], ["homes", "Homes"]] },
   { id: "journal", label: "Journal" },
   { id: "system", label: "System" }
 ];
 const VIEWS = {
   cyberware: cyber.renderCyberware, perks: perks.renderPerks, capacity: capacity.renderCapacity, builds: builds.renderBuilds,
   weapons: weapons.renderWeapons, wardrobe: () => renderSoon("wardrobe"),
-  collection: collection.renderCollection, journal: journal.renderJournal,
+  overview: overview.renderOverview, vehicles: collection.renderVehicles, collectibles: collectibles.renderCollectibles, homes: collectibles.renderHomes,
+  journal: journal.renderJournal,
   system: system.renderSystem
 };
-const HANDLERS = [cyber, perks, capacity, builds, journal, weapons, collection, system];
+const HANDLERS = [cyber, perks, capacity, builds, journal, weapons, collection, collectibles, overview, system];
 
 const curTab = () => TABS.find(t => t.id === S.ui.tab) || TABS[0];
 const curSub = () => { const t = curTab(); const s = S.ui.subs[t.id]; return t.subs.some(([id]) => id === s) ? s : t.subs[0][0]; };

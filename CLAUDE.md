@@ -24,18 +24,21 @@ js/rules.js           perk gates and budgets, capacity math
 js/journal.js         mission availability, branches, recommended order (plan), reordering, progress
 js/ui.js              $, esc, toast, the shared sheet, download/readFile, icons
 js/views/weapons.js   Gear › Weapons (list, filters, iconic tracking, detail); exports weaponsFrom() for the Journal
-js/views/collection.js  Collection (vehicles for now); exports vehiclesFrom() for the Journal
+js/views/collection.js  Collection › Vehicles; exports vehiclesFrom() for the Journal and vehicleTally()
+js/views/collectibles.js  Collection › Collectibles (Tarot, Cyberpsychos, Airdrops, Relic switch) and Homes; KINDS config, tally()
+js/views/overview.js  Collection › Overview: the completion dashboard across Journal, Gear and Collection
 js/views/*.js         one module per screen: export a render function plus optional click/input/change handlers that return true when handled
 data/index.js         assembles SEED from core.js, perks.js, cyberware.js, missions.js; holds the data `version`
 data/missions.js      missionSections + missions (Main Jobs, Side Jobs incl. the wiki's Minor Jobs, Gigs); field meanings are in its header comment
 data/weapons.js       every weapon (197, 114 iconic) with stats, where to get it, mission links, picture URL
 data/vehicles.js      every ownable car and motorcycle (87) with how to get it, Autofixer price/requirements, specs
+data/collectibles.js  Tarot graffiti (26), Cyberpsycho Sightings (17), PL airdrops (16 + 3 treasures), Relic terminals (9), apartments (6 + 4 romance)
 data/examples.js      starter builds, used only when there are no saved builds
 icons/                icon.svg (source) and rendered PNGs
 chromedeck.html       the original single-file planner, kept so old saves can be exported from it; not part of the app
 ```
 
-Navigation (chosen by the owner, left to right): **Character** (sub-tabs Cyberware, Perks, Capacity, Builds), **Gear** (sub-tabs Weapons, Wardrobe), **Collection**, **Journal**, **System**. Character-specific screens stay toward the left. Tabs with sub-tabs remember the last one per tab in `S.ui.subs`. The tab list lives in `TABS` in `js/app.js` and `UI_TABS` in `js/store.js`; keep them in sync. New modules replace the placeholders in `js/views/soon.js`. Only the visible view renders; `renderAll()` redraws nav, header and the current view.
+Navigation (chosen by the owner, left to right): **Character** (sub-tabs Cyberware, Perks, Capacity, Builds), **Gear** (sub-tabs Weapons, Wardrobe), **Collection** (sub-tabs Overview, Vehicles, Collectibles, Homes), **Journal**, **System**. Character-specific screens stay toward the left. Tabs with sub-tabs remember the last one per tab in `S.ui.subs`. The tab list lives in `TABS` in `js/app.js` and `UI_TABS` in `js/store.js`; keep them in sync. New modules replace the placeholders in `js/views/soon.js`. Only the visible view renders; `renderAll()` redraws nav, header and the current view.
 
 Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, and add new files to `APP_FILES`. Installed copies show an "Update" banner when a new version is live.
 
@@ -102,7 +105,15 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
 ## Vehicle data
 
 - From the wiki "Cyberpunk 2077 Vehicles" page's Ownable Vehicles tables (source + notes) and each vehicle's `Infobox Vehicle`. No game ids exist, so `id` is built from the name; never change it.
-- `from` links to missions; `dep` = the reward depends on a choice (note says what); lifepath-only via `branch`. Owned: `S.playthrough.vehicles`. Collection is a single page for now; when more trackers land, give it sub-tabs.
+- `from` links to missions; `dep` = the reward depends on a choice (note says what); lifepath-only via `branch`. Owned: `S.playthrough.vehicles`.
+
+## Collectibles data
+
+- `data/collectibles.js`, from the wiki pages in each `src` (Tarot Cards, Fool on the Hill, Psycho Killer + each Cyberpsycho Sighting page, Airdrops, Relic (attribute), Apartments + Welcome Home pages).
+- Progress per playthrough: `tarot`, `psychos`, `psychoKilled` ({id: true}, Regina wants them alive), `airdrops`, `relic`, `apartments`, each {id: timestamp}. UI: `S.ui.collect` (`kind`, `hideDone`).
+- `after` = missions required (linked, not enforced); `near` = missions set at that spot; `need` = other requirement as text. Cyberpsycho ids are the game's quest ids; rentals use theirs (dlc6_apart_*).
+- Airdrops: the one-time (metaquest) drops are lost if left to despawn (wiki), so they show as Missable. `wpn` links iconic weapon ids; `rtt` = contents change after Run This Town.
+- Apartments with `dep` (romance places) are listed but not counted. The Overview counts only what `applies` to this run.
 
 ## UI conventions
 
@@ -121,7 +132,7 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
    - points of no return, in plain words.
 3. **Weapons and vehicles (done):** Gear › Weapons and Collection › Vehicles.
 4. **Wardrobe (Gear › Wardrobe):** full clothing list with slot, stats and location (exact where static), plus an outfit builder on the V silhouette.
-5. **Collection:** vehicles, Tarot graffiti, Cyberpsycho Sightings, Phantom Liberty airdrops, apartments, romances and endings, achievements, and a completion dashboard (which also counts iconic weapons from Gear).
+5. **Collection:** done: vehicles, Tarot graffiti, Cyberpsycho Sightings, Phantom Liberty airdrops, Relic terminals, apartments, and the completion dashboard (Overview). Still to do: romances, achievements.
 
 ## Checking changes
 
