@@ -85,6 +85,11 @@ export function validateData(d) {
     }
     for (const m of d.missions) for (const r of [...(m.after || []), ...(m.any || []), ...(m.before || [])]) if (!mids.has(r)) return `"${m.name}" refers to unknown mission "${r}".`;
   }
+  if (d.weapons !== undefined) {
+    if (!Array.isArray(d.weapons)) return "weapons must be a list.";
+    const wids = new Set();
+    for (const w of d.weapons) { if (!w.id || !w.name || !w.type) return `Weapon "${w.name || w.id || "?"}" needs id, name and type.`; if (wids.has(w.id)) return `Duplicate weapon id "${w.id}".`; wids.add(w.id); }
+  }
   return null;
 }
 
@@ -157,7 +162,9 @@ export function normalize() {
   const P = S.playthrough;
   if (!P.missions || typeof P.missions !== "object") P.missions = {};          // {missionId: timestamp done}
   if (!P.choices) P.choices = { lifepath: null, pl: null, plEnd: null };     // story branches taken this run
-  if (!Array.isArray(P.order)) P.order = [];                                // user's custom mission order (ids), empty = recommended
+  if (!Array.isArray(P.order)) P.order = [];
+  if (!P.weapons || typeof P.weapons !== "object") P.weapons = {};             // {weaponId: timestamp owned}
+  if (DATA.weapons) { const ok = new Set(DATA.weapons.map(w => w.id)); for (const id in P.weapons) if (!ok.has(id)) delete P.weapons[id]; }                                // user's custom mission order (ids), empty = recommended
   if (DATA.missions) { const ok = new Set(DATA.missions.map(m => m.id)); for (const id in P.missions) if (!ok.has(id)) delete P.missions[id]; P.order = P.order.filter(id => ok.has(id)); }
   if (!S.dataEdits) S.dataEdits = {};
   // UI position. v0.3.0 kept one `sub` (Character only) and had Wardrobe as its own tab.
@@ -168,6 +175,7 @@ export function normalize() {
   if (!UI_TABS.includes(S.ui.tab)) S.ui.tab = "character";
   if (!S.ui.journal) S.ui.journal = { hideDone: true };
   if (!S.ui.journal.filter) S.ui.journal.filter = "all";
+  if (!S.ui.weapons) S.ui.weapons = { show: "iconic", type: "all", q: "", hideOwned: false };
   if (!S.builds.length) { S.builds.push(newBuild("Build 1")); }
   const d = newBuild();
   S.builds.forEach(b => {

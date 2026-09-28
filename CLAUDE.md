@@ -23,9 +23,11 @@ js/store.js           state `S`, game data `DATA`, storage, data-edit diffs, loa
 js/rules.js           perk gates and budgets, capacity math
 js/journal.js         mission availability, branches, recommended order (plan), reordering, progress
 js/ui.js              $, esc, toast, the shared sheet, download/readFile, icons
+js/views/weapons.js   Gear › Weapons (list, filters, iconic tracking, detail); exports weaponsFrom() for the Journal
 js/views/*.js         one module per screen: export a render function plus optional click/input/change handlers that return true when handled
 data/index.js         assembles SEED from core.js, perks.js, cyberware.js, missions.js; holds the data `version`
 data/missions.js      missionSections + missions (Main Jobs, Side Jobs incl. the wiki's Minor Jobs, Gigs); field meanings are in its header comment
+data/weapons.js       every weapon (197, 114 iconic) with stats, where to get it, mission links, picture URL
 data/examples.js      starter builds, used only when there are no saved builds
 icons/                icon.svg (source) and rendered PNGs
 chromedeck.html       the original single-file planner, kept so old saves can be exported from it; not part of the app
@@ -88,6 +90,13 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
 - The list has a search box (name, giver, line, district, objective; includes finished and missed) and two layouts: **Order** (recommended order with story headers) and **By storyline** (collapsible groups from `groupOf()`, ordered by `groupRank()`; open groups remembered in `S.ui.journal.open`). Typing only redraws `#jList` so the search box keeps focus.
 - System › "To check in game" lists every entry with `verified:false` plus `GENERAL_CHECKS` (rules not tied to one entry). When the owner answers one, fix the data and drop the flag.
 
+## Weapon data
+
+- From each weapon page's `Infobox Weapon2077` (grenades: `Infobox Grenade`); `get` = the infobox source, or the page's Acquisition section when the source says "See acquisition".
+- `from` links to mission ids (source names, plus exact case-sensitive mission names found in the acquisition text). `miss` = the source says missable or the linked mission flags that item missable. `lowe` = the text says Herold Lowe (Dogtown) sells it if missed — shown as "missable*", not "lost for good".
+- Owned iconics: `S.playthrough.weapons` ({id: timestamp}). Mission details list the iconics a mission gives (`weaponsFrom`).
+- Pictures are wiki CDN URLs (`img`), loaded when viewed and cached by the service worker; the view falls back to a placeholder when offline and uncached.
+
 ## UI conventions
 
 - Mobile first: design at ~390px wide, bottom navigation, and tap targets of at least 44px. It should also look right on a PC.
@@ -103,7 +112,7 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
    - manual reordering that warns about risks,
    - the unique items tied to each mission,
    - points of no return, in plain words.
-3. **Weapons and vehicles:** Gear › Weapons lists every weapon, with iconics flagged and trackable there (where to get them, whether missable). Unique vehicles and how to unlock them go in Collection.
+3. **Weapons and vehicles:** Weapons done (Gear › Weapons). Vehicles next, in Collection.
 4. **Wardrobe (Gear › Wardrobe):** full clothing list with slot, stats and location (exact where static), plus an outfit builder on the V silhouette.
 5. **Collection:** vehicles, Tarot graffiti, Cyberpsycho Sightings, Phantom Liberty airdrops, apartments, romances and endings, achievements, and a completion dashboard (which also counts iconic weapons from Gear).
 

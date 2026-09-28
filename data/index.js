@@ -8,14 +8,16 @@ import { core } from "./core.js";
 import { perks } from "./perks.js";
 import { cyberware } from "./cyberware.js";
 import { missions, missionSections } from "./missions.js";
+import { weapons } from "./weapons.js";
 
 export const SEED = {
-  version: "2.31 seed 2026-09-30 · gigs",
+  version: "2.31 seed 2026-09-30 · weapons",
   ...core,
   perks,
   cyberware,
   missionSections,
-  missions
+  missions,
+  weapons
 };
 
 export { EXAMPLE_BUILDS } from "./examples.js";

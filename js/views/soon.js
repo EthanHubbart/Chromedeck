@@ -5,11 +5,6 @@
 import { $, esc } from "../ui.js";
 
 const PLANS = {
-  weapons: {
-    title: "Weapons", next: "Planned",
-    lead: "Every weapon, with iconics flagged so you can check them off as you find them.",
-    items: ["Stats and effects as the game shows them", "Iconic weapons: where and how to get each one, and whether it's missable", "Track which iconics you own", "Filter by type, class and Tech / Power / Smart"]
-  },
   collection: {
     title: "Collection", next: "Planned",
     lead: "Everything collectible, with where and how to get it.",
