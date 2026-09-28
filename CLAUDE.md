@@ -58,6 +58,8 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
 
 - **No game art in the repo.** The avatar is a stylized male/female V silhouette with the same equipment slots as the game.
 - Item pictures (mainly clothing) are loaded at view time from the Cyberpunk wiki URL stored on the entry (`img`). They're cached on the device for offline use, never committed. Each one is credited "Image: Cyberpunk Wiki / CD PROJEKT RED". If an image fails to load, show a slot icon.
+- Always render them with `wikiImg()` / `wikiThumb()` from `js/ui.js`. Fandom's image server answers requests carrying another site's referrer with a "not found" placeholder, so the page sets `<meta name="referrer" content="no-referrer">` and images load with `referrerpolicy="no-referrer"`. `wikiThumb()` asks for a 400px-wide copy (`/scale-to-width-down/400`), a fraction of the full file.
+- The service worker (`wikiImage()` in `sw.js`) fetches them with CORS, keeps only real pictures (never error pages), and gives up after 15 s. Bump `IMAGES` in `sw.js` if bad copies ever get cached.
 - This relies on CD PROJEKT RED's [Fan Content Guidelines](https://www.cdprojektred.com/en/fan-content). The app must stay free and non-commercial, and shows a footer disclaimer that it's an unofficial fan project.
 
 ## State and storage

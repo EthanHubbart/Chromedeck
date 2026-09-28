@@ -4,7 +4,7 @@
    ======================================================================== */
 import { S, DATA, save } from "../store.js";
 import { mission, isDone } from "../journal.js";
-import { $, esc, toast, openSheet, sheetOpen } from "../ui.js";
+import { $, esc, toast, openSheet, sheetOpen, wikiImg } from "../ui.js";
 
 const TECH = { Power: "Power", Tech: "Tech", Smart: "Smart", Blade: "Blade", Blunt: "Blunt", Thrown: "Thrown" };
 const STATS = [["dmg", "Damage / hit"], ["aps", "Attacks / s"], ["rel", "Reload (s)"], ["rng", "Range"], ["hnd", "Handling"], ["mag", "Magazine"], ["hs", "Headshot ×%"], ["ap", "Armor pen. %"], ["wt", "Weight"], ["rad", "Radius (m)"]];
@@ -75,7 +75,7 @@ function openWeapon(id) {
   const stats = STATS.filter(([k]) => w.stats && w.stats[k] !== undefined).map(([k, l]) => `<div><small>${l}</small><b class="num">${w.stats[k]}</b></div>`).join("");
   openSheet((w.iconic ? "Iconic · " : "") + w.type, `
     <div class="detail">
-      ${w.img ? `<figure class="wimg"><img src="${esc(w.img)}" alt="${esc(w.name)}" loading="lazy" onerror="this.parentNode.classList.add('noimg')"><figcaption>Image: Cyberpunk Wiki / CD PROJEKT RED</figcaption></figure>` : ""}
+      ${w.img ? `${wikiImg(w.img, w.name)}` : ""}
       <div class="name">${w.iconic ? `<span class="ic-d">◆</span> ` : ""}${esc(w.name)}</div>
       <div class="line">${[w.type, w.tech && `${TECH[w.tech]}`, w.mfr].filter(Boolean).map(x => `<span>${esc(x)}</span>`).join("<span>·</span>")}</div>
       ${w.iconic ? (o ? `<div class="okbox">Owned ✓</div>` : lostForGood(w) ? `<div class="warnbox"><b>⚠ Missable.</b> If you don't pick it up where it's offered, it's gone for this run.</div>` : w.miss ? `<div class="warnbox" style="border-color:var(--yellow);color:var(--yellow);background:rgba(245,230,13,.05)"><b>⚠ Missable in its mission</b>, but Herold Lowe in Dogtown (Phantom Liberty) sells it if you miss it.</div>` : "") : ""}

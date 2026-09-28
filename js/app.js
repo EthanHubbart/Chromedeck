@@ -18,7 +18,7 @@ import * as collectibles from "./views/collectibles.js";
 import * as overview from "./views/overview.js";
 import { renderSoon } from "./views/soon.js";
 
-export const APP_VERSION = "0.9.0";   // keep in step with CACHE in sw.js
+export const APP_VERSION = "0.9.1";   // keep in step with CACHE in sw.js
 
 /* ---------- navigation ---------- */
 /* Bottom tabs, left to right. A tab with `subs` shows sub-tabs across the top

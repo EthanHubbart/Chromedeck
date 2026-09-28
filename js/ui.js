@@ -12,6 +12,16 @@ export function toast(m, ms = 1600) {
 export function tierBadge(it) { return `<span class="tb t${it.tier}${it.iconic ? " ic" : ""}" title="${it.iconic ? "Iconic, " : ""}tier ${it.tier} and up">T${it.tier}</span>`; }
 export function rarityName(t) { return ["", "Common", "Uncommon", "Rare", "Epic", "Legendary"][t] || ""; }
 export function firstLine(s) { return (s || "").split("\n")[0]; }
+/* ---- wiki pictures ----
+   Fandom's image server refuses requests that say they come from another site (it answers
+   with a "not found" placeholder), so pictures load with no referrer. They're also asked for
+   at a reduced width, which is a fraction of the download on a phone connection. */
+export function wikiThumb(url, w = 400) {
+  return /\/revision\/latest(?!\/scale)/.test(url) ? url.replace("/revision/latest", `/revision/latest/scale-to-width-down/${w}`) : url;
+}
+export function wikiImg(url, alt, cls = "") {
+  return `<figure class="wimg ${cls}"><img src="${esc(wikiThumb(url))}" alt="${esc(alt)}" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentNode.classList.add('noimg')"><figcaption>Image: Cyberpunk Wiki / CD PROJEKT RED</figcaption></figure>`;
+}
 export function groupBy(arr, f) { const m = new Map(); arr.forEach(x => { const k = f(x); if (!m.has(k)) m.set(k, []); m.get(k).push(x); }); return m; }
 
 /* ---- the one shared bottom sheet ---- */

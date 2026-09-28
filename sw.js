@@ -1,9 +1,9 @@
 /* Service worker: keeps Chromedeck working offline.
    Bump CACHE on every release (match APP_VERSION in js/app.js) and add any new
    file to APP_FILES, or installed copies keep serving the old version. */
-const CACHE = "chromedeck-0.9.0";
+const CACHE = "chromedeck-0.9.1";
 const FONTS = "chromedeck-fonts";
-const IMAGES = "chromedeck-images";   // wiki images, cached as they're viewed
+const IMAGES = "chromedeck-images-2";   // wiki images, cached as they're viewed (-2: drops broken copies cached by 0.9.0 and earlier)
 const APP_FILES = [
   "./", "index.html", "manifest.webmanifest",
   "css/tokens.css", "css/app.css",
@@ -30,7 +30,7 @@ self.addEventListener("fetch", e => {
   } else if (url.hostname.endsWith("fonts.googleapis.com") || url.hostname.endsWith("fonts.gstatic.com")) {
     e.respondWith(staleWhileRevalidate(FONTS, req));
   } else if (url.hostname.endsWith("nocookie.net")) {
-    e.respondWith(cacheFirst(IMAGES, req));
+    e.respondWith(wikiImage(req));
   }
 });
 async function staleWhileRevalidate(name, req) {
@@ -38,7 +38,14 @@ async function staleWhileRevalidate(name, req) {
   const net = fetch(req).then(r => { if (r.ok || r.type === "opaque") cache.put(req, r.clone()); return r; }).catch(() => hit || Response.error());
   return hit || net;
 }
-async function cacheFirst(name, req) {
-  const cache = await caches.open(name); const hit = await cache.match(req); if (hit) return hit;
-  const r = await fetch(req); if (r.ok || r.type === "opaque") cache.put(req, r.clone()); return r;
+/* Wiki pictures: cache first. Fetched with CORS and no referrer (Fandom answers other sites'
+   referrers with a "not found" placeholder), and only real pictures are kept, so a failed
+   download is retried next time instead of being stored. */
+async function wikiImage(req) {
+  const cache = await caches.open(IMAGES); const hit = await cache.match(req.url); if (hit) return hit;
+  // give up after 15 s so a weak signal shows the "unavailable" placeholder instead of hanging
+  const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 15000);
+  const r = await fetch(req.url, { mode: "cors", credentials: "omit", referrerPolicy: "no-referrer", signal: ctl.signal }).finally(() => clearTimeout(t));
+  if (r.ok) cache.put(req.url, r.clone());
+  return r;
 }

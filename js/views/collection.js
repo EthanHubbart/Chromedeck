@@ -5,7 +5,7 @@
    ============================================================================== */
 import { S, DATA, save } from "../store.js";
 import { mission, isDone } from "../journal.js";
-import { $, esc, toast, openSheet, sheetOpen } from "../ui.js";
+import { $, esc, toast, openSheet, sheetOpen, wikiImg } from "../ui.js";
 
 const owned = id => !!S.playthrough.vehicles[id];
 const applies = v => !v.branch || !S.playthrough.choices[v.branch[0]] || S.playthrough.choices[v.branch[0]] === v.branch[1];
@@ -78,7 +78,7 @@ function openVehicle(id) {
   const reqs = [v.price && `${eb(v.price)} on Autofixer`, v.cred && `Street Cred ${v.cred}`, v.jas && `Just Another Story completed ${v.jas} time${v.jas > 1 ? "s" : ""}`, v.pl && "Phantom Liberty"].filter(Boolean);
   openSheet(v.kind === "bike" ? "Motorcycle" : "Car", `
     <div class="detail">
-      ${v.img ? `<figure class="wimg"><img src="${esc(v.img)}" alt="${esc(v.name)}" loading="lazy" onerror="this.parentNode.classList.add('noimg')"><figcaption>Image: Cyberpunk Wiki / CD PROJEKT RED</figcaption></figure>` : ""}
+      ${v.img ? `${wikiImg(v.img, v.name)}` : ""}
       <div class="name">${esc(v.name)}</div>
       <div class="line">${[v.mfr, v.cls].filter(Boolean).map(x => `<span>${esc(x)}</span>`).join("<span>·</span>")}</div>
       ${o ? `<div class="okbox">Owned ✓</div>` : v.dep ? `<div class="warnbox" style="border-color:var(--yellow);color:var(--yellow);background:rgba(245,230,13,.05)"><b>⚠ Depends on a choice.</b> ${esc(v.note || "")}</div>` : ""}
