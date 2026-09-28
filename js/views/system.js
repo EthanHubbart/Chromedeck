@@ -3,6 +3,23 @@
    ================================================================ */
 import { SEED } from "../../data/index.js";
 import { S, DATA, store, save, setData, resetData, validateData, hasEdits } from "../store.js";
+
+/* Open questions to confirm in the game: every data entry marked verified:false, plus rules
+   that aren't tied to one entry. */
+const GENERAL_CHECKS = [
+  { text: "Bridge perks (the ones between two branches, e.g. Bloodlust in Body): do they need BOTH connected perks, or does either one unlock them? The app currently requires both.", perk: "bloodlust" }
+];
+function checksHtml() {
+  const rows = [
+    ...GENERAL_CHECKS.map(c => ({ label: "Perk rule", text: c.text, attr: c.perk ? `data-perk="${c.perk}"` : "" })),
+    ...DATA.perks.filter(p => p.verified === false).map(p => ({ label: "Perk · " + p.name, text: p.check, attr: `data-perk="${p.id}"` })),
+    ...(DATA.missions || []).filter(m => m.verified === false).map(m => ({ label: "Mission · " + m.name, text: m.check, attr: `data-mission="${m.id}"` }))
+  ];
+  return `<div class="panel"><div class="ph"><h2>To check in game</h2><span class="meta">${rows.length} open</span></div><div class="pb">
+    <p class="hint" style="margin:0 0 6px">Things the wiki doesn't settle. Tell me what you see and I'll fix the data.</p>
+    ${rows.map(r => `<button class="chk" ${r.attr}><b>${esc(r.label)}</b><small>${esc(r.text || "")}</small></button>`).join("")}
+  </div></div>`;
+}
 import { $, esc, toast, download, readFile } from "../ui.js";
 import { renderAll, restoreFromFile, APP_VERSION } from "../app.js";
 
@@ -25,6 +42,8 @@ export function renderSystem() {
     <div class="btnrow"><button class="btn pri" id="sExport">Export everything</button><button class="btn" id="sImport">Restore a backup</button></div>
     <input type="file" id="sFile" accept="application/json,.json" hidden>
   </div></div>
+
+  ${checksHtml()}
 
   <div class="panel"><div class="ph"><h2>Install on your phone</h2></div><div class="pb">${install}</div></div>
 

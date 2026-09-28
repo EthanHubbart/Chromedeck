@@ -39,10 +39,22 @@ export const applicable = () => DATA.missions.filter(applies);
    Dogtown in Dog Eat Dog. Only used when the mission has no `after`/`any` of its own. */
 const ANCHOR = { watson: "q001_intro", city: "q101_resurrection", dogtown: "q301_crash" };
 export function anchorOf(m) {
-  if (isMain(m) || (m.after && m.after.length) || (m.any && m.any.length)) return null;
+  if (isMain(m) || (m.after && m.after.length) || (m.any && m.any.length) || tierReqs(m).length) return null;
   const id = m.pl ? ANCHOR.dogtown : m.district === "Watson" ? ANCHOR.watson : ANCHOR.city;
   return mission(id) ? id : null;
 }
+
+/* Gig tiers: a fixer offers their next set of gigs once every gig of the previous tier is done
+   (wiki, Gigs page). Applied only to gigs whose page lists no predecessors of its own. */
+export function tierReqs(m) {
+  if (m.type !== "gig" || !m.tier || (m.after && m.after.length)) return [];
+  const same = DATA.missions.filter(x => x.type === "gig" && x.giver === m.giver && x.district === m.district && x.tier < m.tier);
+  if (!same.length) return [];
+  const prev = Math.max(...same.map(x => x.tier));
+  return same.filter(x => x.tier === prev).map(x => x.id);
+}
+/* The game's requirements (no estimates, no ordering-only rules), for the detail view. */
+export const requirementsOf = m => ({ all: [...(m.after || []), ...tierReqs(m)], any: m.any || [] });
 
 /* Deadlines: missions that must be done before `id`, or they're lost. */
 export const deadlinesFor = id => DATA.missions.filter(x => (x.before || []).includes(id) && applies(x));
@@ -52,7 +64,7 @@ export const isMissed = m => !isDone(m.id) && (m.before || []).some(isDone);
    Plan mode adds the ordering-only rules: point of no return and deadlines. */
 function reqs(m, planList) {
   const ok = id => { const r = mission(id); return r && applies(r); };
-  const all = (m.after || []).filter(ok);
+  const all = [...(m.after || []), ...tierReqs(m)].filter(ok);
   const any = (m.any || []).filter(ok);
   const a = anchorOf(m); if (a) all.push(a);
   if (planList) {
@@ -77,7 +89,7 @@ export function blockers(m) {
 }
 /* Unfinished missions you'd lose access to by starting a point-of-no-return mission. */
 export function lockedOutBy(m) { return m.pnr ? applicable().filter(x => x.id !== m.id && !afterPnr(x) && !isDone(x.id) && !isMissed(x)) : []; }
-export function leadsTo(m) { return DATA.missions.filter(x => applies(x) && ((x.after || []).includes(m.id) || (x.any || []).includes(m.id))); }
+export function leadsTo(m) { return DATA.missions.filter(x => applies(x) && ((x.after || []).includes(m.id) || (x.any || []).includes(m.id) || tierReqs(x).includes(m.id))); }
 
 /* The plan: every applicable, not-missed mission in recommended order (done ones included). */
 export function plan() {
@@ -86,8 +98,8 @@ export function plan() {
   const prio = new Map(); const base = DATA.missions.map(m => m.id);
   const ranked = custom.length ? [...custom, ...base.filter(id => !custom.includes(id))] : base;
   ranked.forEach((id, i) => prio.set(id, i));
-  // finished missions go first (in story order) so the list reads as history, then what's left
-  const key = m => isDone(m.id) ? -2e6 + prio.get(m.id) : custom.length ? prio.get(m.id) : (isMain(m) ? 1e6 : 0) + prio.get(m.id);
+  // finished (and optional) missions go first, in story order, so the list reads as history, then what's left
+  const key = m => isDone(m.id) || m.opt ? -2e6 + prio.get(m.id) : custom.length ? prio.get(m.id) : (isMain(m) ? 1e6 : 0) + prio.get(m.id);
   const R = new Map(list.map(m => [m.id, reqs(m, list)]));
   const placed = new Set(), out = [];
   let pending = [...list];
@@ -130,7 +142,7 @@ export function markWithPrereqs(id) {
     const m = mission(mid); if (!m) return;
     if (m.branch && !S.playthrough.choices[m.branch[0]]) setChoice(m.branch[0], m.branch[1]);
     S.playthrough.missions[mid] = S.playthrough.missions[mid] || Date.now();
-    (m.after || []).forEach(r => { const x = mission(r); if (x && applies(x)) walk(r); });
+    [...(m.after || []), ...tierReqs(m)].forEach(r => { const x = mission(r); if (x && applies(x)) walk(r); });
     const any = (m.any || []).filter(r => { const x = mission(r); return x && applies(x); });
     if (any.length === 1) walk(any[0]);
   };
@@ -153,9 +165,10 @@ export function progress() {
   const list = applicable();
   const story = list.filter(m => isMain(m) && !isEnding(m));
   const side = list.filter(m => m.type === "side");
+  const gigs = list.filter(m => m.type === "gig");
   const ends = DATA.missions.filter(isEnding);
   const endPaths = [...new Set(ends.map(m => m.sec))].filter(s => s !== "epilogue");
   const pathDone = endPaths.filter(s => ends.filter(m => m.sec === s).every(m => isDone(m.id))).length;
   const n = xs => xs.filter(m => isDone(m.id)).length;
-  return { storyDone: n(story), storyTotal: story.length, sideDone: n(side), sideTotal: side.length, sideMissed: side.filter(isMissed).length, pathDone, pathTotal: endPaths.length };
+  return { storyDone: n(story), storyTotal: story.length, sideDone: n(side), sideTotal: side.length, sideMissed: side.filter(isMissed).length, gigDone: n(gigs), gigTotal: gigs.length, pathDone, pathTotal: endPaths.length };
 }

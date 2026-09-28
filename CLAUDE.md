@@ -25,7 +25,7 @@ js/journal.js         mission availability, branches, recommended order (plan), 
 js/ui.js              $, esc, toast, the shared sheet, download/readFile, icons
 js/views/*.js         one module per screen: export a render function plus optional click/input/change handlers that return true when handled
 data/index.js         assembles SEED from core.js, perks.js, cyberware.js, missions.js; holds the data `version`
-data/missions.js      missionSections + missions (Main Jobs, Side Jobs incl. the wiki's Minor Jobs); field meanings are in its header comment
+data/missions.js      missionSections + missions (Main Jobs, Side Jobs incl. the wiki's Minor Jobs, Gigs); field meanings are in its header comment
 data/examples.js      starter builds, used only when there are no saved builds
 icons/                icon.svg (source) and rendered PNGs
 chromedeck.html       the original single-file planner, kept so old saves can be exported from it; not part of the app
@@ -83,6 +83,9 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
 - Side jobs with no wiki prerequisite get an estimated anchor in `anchorOf()` (Watson → The Rescue, rest of the city → Playing for Time, Phantom Liberty → Dog Eat Dog). It's labelled as an estimate, never auto-marked done, and never written into the data.
 - `ext` = requirements the app can't track yet (text). Missions with `ext` never show as available.
 - Lifepath-only side jobs use `branch:["lifepath", …]`.
+- Gigs: `giver` = fixer, `tier` = fixer tier. Gigs whose wiki page lists predecessors use those as `after`; the rest unlock when every gig of the fixer's previous tier (same fixer and district) is done, computed by `tierReqs()`. Tier-1 gigs get the estimated anchor. Fixer thank-you side jobs (Last Call etc.) list all of that fixer's gigs in `after`.
+- Act 2's concurrent threads are drawn as lanes in `threadCard()` (js/views/journal.js): Evelyn → Voodoo Boys (paths evelyn + alt, one sequential lane), Hellman, Takemura. Cross-thread requirements are listed under the card. Story sections can interleave in the plan (Phantom Liberty opens mid-Act 2), so a resumed section gets a "(continued)" header.
+- System › "To check in game" lists every entry with `verified:false` plus `GENERAL_CHECKS` (rules not tied to one entry). When the owner answers one, fix the data and drop the flag.
 
 ## UI conventions
 
@@ -94,7 +97,7 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
 ## Roadmap
 
 1. **Foundation (done):** multi-file PWA, design system, and a port of the existing planner (capacity, cyberware, perks, builds, shards) with the data moved to `data/`. Hosting is still pending: GitHub Pages needs the repo to be public.
-2. **Missions and missables:** every Main Job, Side Job and Gig (base game and Phantom Liberty). Done: Main Jobs (64) and Side Jobs (133: the wiki's 46 Side Jobs + 87 Minor Jobs, all under Side Jobs in the game). Gigs are next; when they land, turn the `ext` gig references into real `after` ids. Features:
+2. **Missions and missables:** every Main Job, Side Job and Gig (base game and Phantom Liberty). Done: Main Jobs (64), Side Jobs (133: the wiki's 46 Side Jobs + 87 Minor Jobs, all under Side Jobs in the game) and Gigs (81, incl. 9 Phantom Liberty). NCPD Scanner Hustles are deliberately not tracked. Features:
    - a recommended order for story flow and missable safety, which updates as missions are checked off,
    - manual reordering that warns about risks,
    - the unique items tied to each mission,
