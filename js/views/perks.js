@@ -59,7 +59,7 @@ function hookScroll(attr, L) {
   const onScroll = () => {
     UI.scrollX[attr.id] = el.scrollLeft;
     const mid = el.scrollLeft + el.clientWidth / 2;
-    const c = L.order.reduce((best, k) => Math.abs(L.colX[k] + L.colW[k] / 2 - mid) < Math.abs(L.colX[best] + L.colW[best] / 2 - mid) ? k : best, L.order[0]);
+    const c = L.order.reduce((best, k) => Math.abs(L.cx[k] - mid) < Math.abs(L.cx[best] - mid) ? k : best, L.order[0]);
     if (c !== UI.perkBranch) { UI.perkBranch = c; document.querySelectorAll("#pTabs button").forEach(bt => { const on = +bt.dataset.pbranch === c; bt.classList.toggle("on", on); bt.setAttribute("aria-pressed", on); }); }
   };
   el.addEventListener("scroll", onScroll, { passive: true });
@@ -68,68 +68,37 @@ function scrollToBranch(c) {
   const el = $("#treeScroll"); if (!el || !TREE) return;
   el.scrollTo({ left: branchScrollX(TREE.L, c, el.clientWidth), behavior: "smooth" });
 }
-/* ---------- the tree: every branch of an attribute side by side, tiers from the bottom up ----------
-   Like the game: the lowest tier sits at the bottom and Legend (20) at the top. Each branch is a
-   column; bridge perks (parents in two branches) sit in the gap between their two columns. Inside a
-   tier, perks are laid out as a small tree: a perk sits above the one it hangs off, so chained perks
-   (Counter-A-Hack → Copy-Paste) climb off their parent instead of joining the main row.
-   Columns are ordered so every bridge links neighbours (Cool: Stealth goes in the middle). */
-const COL_MIN = 330, UNIT = 92, ROW_H = 96, GUT = 96, BAND_LBL = 26, BAND_PAD = 12, HEAD_H = 30, R_CORE = 24, R_SAT = 20, LBL_SPACE = 30;
+/* ---------- the tree: one canvas per attribute, laid out like the game ----------
+   Every perk sits at its position on the official CD PROJEKT RED build planner (x, y in
+   data/perks.js), scaled down: Rookie at the bottom, Legend across the top, the three trees
+   side by side and bridge perks between them. The tabs follow the part of the canvas on screen. */
+const SCALE = .46, PAD_X = 64, HEAD_H = 34, PAD_TOP = 62, PAD_BOT = 72, R_CORE = 24, R_SAT = 20;
 const ICON = "https://static.wikia.nocookie.net/cyberpunk/images/";
 export const perkIconUrl = p => p.icon ? `${ICON}${p.icon}/revision/latest/scale-to-width-down/100` : null;
 const COL = { taken: "#f5e60d", open: "#eef6f7", locked: "#ff3d5e" };   // in-game: selected yellow, available white, locked red
 
 const parentsOf = p => reqsOf(p).map(perk).filter(Boolean);
 const bridgeCols = p => { const bs = [...new Set(parentsOf(p).filter(q => q.attr === p.attr).map(q => q.br))]; return bs.length > 1 ? bs : null; };
-/* Branch order left to right: keep the data order unless a bridge would link non-neighbours. */
-function colOrder(attr) {
-  const n = attr.branches.length; const base = [...Array(n).keys()];
-  if (n < 3) return base;
-  const links = DATA.perks.filter(p => p.attr === attr.id).flatMap(p => { const bs = bridgeCols(p); if (bs) return [bs]; const q = parentsOf(p)[0]; return q && q.attr === p.attr && q.br !== p.br ? [[q.br, p.br]] : []; });
-  const bad = ord => links.filter(([a, c]) => Math.abs(ord.indexOf(a) - ord.indexOf(c)) > 1).length;
-  const perms = [[0, 1, 2], [1, 0, 2], [0, 2, 1], [1, 2, 0], [2, 0, 1], [2, 1, 0]];
-  return perms.reduce((best, o) => bad(o) < bad(best) ? o : best, base);
-}
 function layoutAttr(attr) {
-  const P = DATA.perks.filter(p => p.attr === attr.id);
-  const tiers = [...new Set(P.map(p => p.tier))].sort((x, y) => x - y);
-  const order = colOrder(attr);
-  const inCol = (p, c) => !bridgeCols(p) && p.br === c;
-  // per tier and column: a small forest (layout parent = a parent in the same tier and column)
-  const lp = p => parentsOf(p).find(q => q.tier === p.tier && q.br === p.br && q.attr === p.attr && !bridgeCols(q));
-  const kids = new Map(); P.forEach(p => { const q = !bridgeCols(p) && lp(p); if (q) { if (!kids.has(q.id)) kids.set(q.id, []); kids.get(q.id).push(p); } });
-  const width = p => Math.max(1, (kids.get(p.id) || []).reduce((a, k) => a + width(k), 0));
-  const depth = {}; const setDepth = (p, d) => { depth[p.id] = d; (kids.get(p.id) || []).forEach(k => setDepth(k, d + 1)); };
-  const forest = {};   // forest[tier][col] = roots
-  tiers.forEach(t => { forest[t] = {}; order.forEach(c => { const roots = P.filter(p => p.tier === t && inCol(p, c) && !lp(p)); roots.forEach(r => setDepth(r, 0)); forest[t][c] = roots; }); });
-  // bridges: one row above the higher parent when it's in the same tier, else the bottom row
-  P.filter(bridgeCols).forEach(p => { const ds = parentsOf(p).filter(q => q.tier === p.tier).map(q => depth[q.id] ?? 0); depth[p.id] = ds.length ? Math.max(...ds) + 1 : 0; });
-  // column widths and x offsets
-  const colW = {}; order.forEach(c => { colW[c] = Math.max(COL_MIN, ...tiers.map(t => forest[t][c].reduce((a, r) => a + width(r), 0) * UNIT + 24)); });
-  const colX = {}; let x = 0; order.forEach((c, i) => { colX[c] = x; x += colW[c] + (i < order.length - 1 ? GUT : 0); });
-  const W = x;
-  // bands from the top (highest tier) down
-  const rows = t => Math.max(1, ...P.filter(p => p.tier === t).map(p => (depth[p.id] ?? 0) + 1));
-  const bands = []; let y = HEAD_H;
-  [...tiers].reverse().forEach(t => { const h = BAND_LBL + rows(t) * ROW_H + BAND_PAD; bands.push({ tier: t, top: y, bottom: y + h }); y += h; });
-  const H = y;
-  const pos = {};
-  const rowY = (t, d) => { const bd = bands.find(z => z.tier === t); return bd.bottom - BAND_PAD - LBL_SPACE - R_CORE - d * ROW_H; };
-  tiers.forEach(t => order.forEach(c => {
-    const roots = forest[t][c]; const total = roots.reduce((a, r) => a + width(r), 0);
-    let u = (colW[c] / UNIT - total) / 2;   // center the tier's forest in its column
-    const place = (p, u0) => { const w = width(p); pos[p.id] = { x: colX[c] + (u0 + w / 2) * UNIT, y: rowY(t, depth[p.id]) }; let k0 = u0; (kids.get(p.id) || []).forEach(k => { place(k, k0); k0 += width(k); }); };
-    roots.forEach(r => { place(r, u); u += width(r); });
-  }));
-  P.filter(bridgeCols).forEach(p => {
-    const [a, c] = bridgeCols(p).sort((m, n) => order.indexOf(m) - order.indexOf(n));
-    const adj = Math.abs(order.indexOf(a) - order.indexOf(c)) === 1;
-    const bx = adj ? colX[c] - GUT / 2 : parentsOf(p).reduce((s, q) => s + (pos[q.id] ? pos[q.id].x : 0), 0) / parentsOf(p).length;
-    pos[p.id] = { x: bx, y: rowY(p.tier, depth[p.id]) };
-  });
-  return { P, order, colX, colW, W, H, bands, pos };
+  const P = DATA.perks.filter(p => p.attr === attr.id && p.x !== undefined);
+  const minX = Math.min(...P.map(p => p.x)), maxX = Math.max(...P.map(p => p.x)), minY = Math.min(...P.map(p => p.y)), maxY = Math.max(...P.map(p => p.y));
+  const pos = {}; P.forEach(p => { pos[p.id] = { x: PAD_X + (p.x - minX) * SCALE, y: HEAD_H + PAD_TOP + (p.y - minY) * SCALE }; });
+  const W = Math.round(PAD_X * 2 + (maxX - minX) * SCALE), H = Math.round(HEAD_H + PAD_TOP + (maxY - minY) * SCALE + PAD_BOT);
+  // tier bands: boundaries halfway between one tier's lowest perk and the next tier's highest
+  const tiers = [...new Set(P.map(p => p.tier))].sort((m, n) => n - m);   // top (highest) first
+  const ys = t => P.filter(p => p.tier === t).map(p => pos[p.id].y);
+  const bands = tiers.map((t, i) => ({ tier: t,
+    top: i ? (Math.max(...ys(tiers[i - 1])) + Math.min(...ys(t))) / 2 : HEAD_H,
+    bottom: i < tiers.length - 1 ? (Math.max(...ys(t)) + Math.min(...ys(tiers[i + 1]))) / 2 : H }));
+  // branch areas: the middle of each branch's perks (bridges and Legend perks left out), left to right
+  const own = c => P.filter(p => p.br === c && !bridgeCols(p) && p.tier !== Math.max(...tiers));
+  const cx = {}, x0 = {}; attr.branches.forEach((_, c) => { const xs = (own(c).length ? own(c) : P.filter(p => p.br === c)).map(p => pos[p.id].x); cx[c] = xs.reduce((a, v) => a + v, 0) / xs.length; x0[c] = Math.min(...xs); });
+  const order = attr.branches.map((_, c) => c).sort((m, n) => cx[m] - cx[n]);
+  return { P, order, cx, x0, W, H, bands, pos };
 }
-export function branchScrollX(L, c, viewW) { return Math.max(0, L.colX[c] - Math.max(0, (viewW - L.colW[c]) / 2)); }
+/* distance from point o to the segment a–z */
+function segDist(o, a, z) { const dx = z.x - a.x, dy = z.y - a.y, t = Math.max(0, Math.min(1, ((o.x - a.x) * dx + (o.y - a.y) * dy) / (dx * dx + dy * dy || 1))); return Math.hypot(a.x + t * dx - o.x, a.y + t * dy - o.y); }
+export function branchScrollX(L, c, viewW) { return Math.max(0, L.cx[c] - viewW / 2); }
 
 function renderTree(attr, b) {
   const L = layoutAttr(attr); const Pr = DATA.progression; const gb = goal();
@@ -137,24 +106,26 @@ function renderTree(attr, b) {
   let s = `<svg width="${L.W}" height="${L.H}" viewBox="0 0 ${L.W} ${L.H}" style="display:block" font-family="inherit">
     <defs>${Object.entries(COL).map(([k, c]) => `<filter id="pk-${k}" x="0" y="0" width="1" height="1"><feFlood flood-color="${c}"/><feComposite in2="SourceAlpha" operator="in"/></filter>`).join("")}
     <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#1a2a32" stroke-width="2"/></pattern></defs>`;
-  // column headers and gutters
-  L.order.forEach(c => { s += `<text x="${L.colX[c] + L.colW[c] / 2}" y="20" text-anchor="middle" font-size="12" font-weight="700" letter-spacing="1.4" fill="var(--cyan)">${esc(attr.branches[c].toUpperCase())}</text>`; });
-  L.order.slice(1).forEach(c => { s += `<rect x="${L.colX[c] - GUT}" y="${HEAD_H}" width="${GUT}" height="${L.H - HEAD_H}" fill="rgba(245,230,13,.025)"/>`; });
+  // branch names over their part of the canvas
+  if (L.order.length > 1) L.order.forEach(c => { s += `<text x="${L.cx[c]}" y="22" text-anchor="middle" font-size="12" font-weight="700" letter-spacing="1.4" fill="var(--cyan)">${esc(attr.branches[c].toUpperCase())}</text>`; });
   // tier bands
   L.bands.forEach((bd, i) => {
     const locked = !attr.relic && bd.tier > av;
     s += `<rect x="0" y="${bd.top}" width="${L.W}" height="${bd.bottom - bd.top}" fill="${i % 2 ? "rgba(91,231,242,.025)" : "transparent"}"/><line x1="0" y1="${bd.top + .5}" x2="${L.W}" y2="${bd.top + .5}" stroke="var(--line)"/>`;
     const lbl = attr.relic ? (["", "Emergency Cloaking", "Vulnerability Analytics", "Jailbreak"][bd.tier] || "") : `${Pr.tierNames[bd.tier]} · ${attr.short} ${bd.tier}`;
-    L.order.forEach(c => { s += `<text x="${L.colX[c] + 8}" y="${bd.top + 18}" font-size="11" font-weight="700" letter-spacing="1.2" fill="${locked ? "var(--red)" : "var(--cyan)"}">${esc(lbl.toUpperCase())}${locked ? "  ·  LOCKED" : ""}</text>`; });
+    // repeat the tier label where each tab's view starts on a phone, so it's always on screen
+    [...new Set([8, ...L.order.map(c => Math.round(branchScrollX(L, c, 366)) + 8)])].forEach(tx => { s += `<text x="${tx}" y="${bd.top + 18}" font-size="11" font-weight="700" letter-spacing="1.2" fill="${locked ? "var(--red)" : "var(--cyan)"}">${esc(lbl.toUpperCase())}${locked ? "  ·  LOCKED" : ""}</text>`; });
     if (locked) s += `<rect x="0" y="${bd.top}" width="${L.W}" height="${bd.bottom - bd.top}" fill="url(#hatch)" opacity=".45"/>`;
   });
-  // links: up from the parent, across, up into the child (drawn first, under the nodes)
+  // links: straight from each parent to the perk, like the game (drawn first, under the nodes)
   L.P.forEach(p => parentsOf(p).forEach(q => {
     const a = L.pos[q.id], z = L.pos[p.id]; if (!a || !z) return;
     const pl = perkLevel(b, q.id), cl = perkLevel(b, p.id);
     const col = cl ? "var(--yellow)" : pl ? "var(--text)" : "var(--line2)";
-    const ym = Math.min(a.y - R_SAT - 6, z.y + R_CORE + LBL_SPACE);
-    s += `<path d="M${a.x},${a.y} V${ym} H${z.x} V${z.y}" fill="none" stroke="${col}" stroke-width="${cl ? 2.2 : 1.6}" ${cl || pl ? "" : 'stroke-dasharray="3 3"'}/>`;
+    // a straight line that would run through another perk bends over the row instead
+    const hits = L.P.some(o => o !== p && o !== q && L.pos[o.id] && segDist(L.pos[o.id], a, z) < R_CORE + 2);
+    const d = hits ? `M${a.x},${a.y} V${Math.min(a.y, z.y) - R_CORE - 12} H${z.x} V${z.y}` : `M${a.x},${a.y} L${z.x},${z.y}`;
+    s += `<path d="${d}" fill="none" stroke="${col}" stroke-width="${cl ? 2.4 : 1.6}" ${cl || pl ? "" : 'stroke-dasharray="4 4"'}/>`;
   }));
   // nodes
   L.P.forEach(p => {
