@@ -86,6 +86,15 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
 - Entries the wiki contradicts itself on keep the app's value with `verified:false` and a `check` note, which shows in the perk's details. Don't "fix" those from the wiki without resolving the contradiction.
 - `get` on cyberware = where to get it, only when more specific than "Ripperdocs". `src` = wiki page.
 - `normalize()` caps saved perk levels at the current max and drops perks that no longer exist.
+- Owner-confirmed in game (2026-09-29): bridge perks need every connected perk; Air Kerenzikov needs Gundancer and Aerial Acrobat; Acquisition Specialist is Intelligence 9. Eight perks' `src` pointed at same-named non-perk pages; they now use the wiki's "(perk)" pages.
+- `icon` = the perk's wiki picture (path under the image store; white line art with transparency). `perkIconUrl()` in js/views/perks.js asks for a 100px copy.
+
+## Perk tree (Character › Perks)
+
+- Source of truth for structure: the official CD PROJEKT RED build planner (cyberpunk.net/en/build-planner). Its script holds, per attribute, every perk's name key (e.g. `Reflexes_Inbetween_Left_3`), `x`/`y` on the in-game canvas, `requires`, `maxPoints`, `requiredAttributePoints` and type (milestone = core); its English file holds names and descriptions. Checked 2026-09-29: all 188 perks match the app after fixing Spontaneous Obliteration (needs Die! Die! Die!), Scorpion Sting (no requirement), five vehicle perks as core, and official spellings (ICEpick, ForceKill Cypher, Counter-a-hack, Dorph-head, Close-quarters Carnage). It also shows Cool's middle tree is Stealth.
+- Each perk's `x`, `y` in data/perks.js are those official coordinates; `layoutAttr()` in js/views/perks.js draws them scaled (`SCALE`), so the tree looks like the game: Rookie at the bottom, Legend on top, three trees side by side, bridges between. Tier bands are drawn halfway between tiers. Links are straight lines; one that would cross another perk bends over the row (`segDist`).
+- The canvas scrolls sideways in `#treeScroll`; the branch tabs follow the part on screen (nearest branch centre, `L.cx`) and tapping one scrolls to it; the position is remembered per attribute while the app is open (`UI.scrollX`). Tier labels repeat where each tab's view starts.
+- Colours like the game: taken = yellow, available = white, locked = red (dashed outline, so it isn't colour alone). Pictures are recoloured with SVG filters (`#pk-taken/open/locked`: flood + composite with the picture's alpha). Bridges get a double outline. Planner markers (◆ + dashed yellow ring) show in Live.
 
 ## Journal rules
 
