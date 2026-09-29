@@ -9,7 +9,8 @@ import { saveStrip } from "./saves.js";
 /* Open questions to confirm in the game: every data entry marked verified:false, plus rules
    that aren't tied to one entry. */
 const GENERAL_CHECKS = [
-  { text: "Bridge perks (the ones between two branches, e.g. Bloodlust in Body): do they need BOTH connected perks, or does either one unlock them? The app currently requires both.", perk: "bloodlust" }
+  // (bridge perks needing every connected perk: confirmed in game by the owner, 2026-09-29)
+  { text: "Cool's three trees: the app shows them as Handguns & rifles · Stealth · Throwables, so Style Over Substance (which links Stealth and Throwables) can sit between its two trees. Is Stealth the middle tree in the game too?", perk: "style_over_substance" }
 ];
 function checksHtml() {
   const rows = [

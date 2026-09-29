@@ -86,6 +86,14 @@ Releasing: bump `APP_VERSION` in `js/app.js` and `CACHE` in `sw.js` together, an
 - Entries the wiki contradicts itself on keep the app's value with `verified:false` and a `check` note, which shows in the perk's details. Don't "fix" those from the wiki without resolving the contradiction.
 - `get` on cyberware = where to get it, only when more specific than "Ripperdocs". `src` = wiki page.
 - `normalize()` caps saved perk levels at the current max and drops perks that no longer exist.
+- Owner-confirmed in game (2026-09-29): bridge perks need every connected perk; Air Kerenzikov needs Gundancer and Aerial Acrobat; Acquisition Specialist is Intelligence 9. Eight perks' `src` pointed at same-named non-perk pages; they now use the wiki's "(perk)" pages.
+- `icon` = the perk's wiki picture (path under the image store; white line art with transparency). `perkIconUrl()` in js/views/perks.js asks for a 100px copy.
+
+## Perk tree (Character › Perks)
+
+- One SVG per attribute with every branch side by side (`layoutAttr()` in js/views/perks.js), scrolled sideways in `#treeScroll`. Tiers run bottom (lowest) to top (20), like the game. The branch tabs follow the tree on screen (scroll listener) and tapping one scrolls to it; the sideways position is remembered per attribute while the app is open (`UI.scrollX`).
+- Inside a tier each branch is a small tree: a perk sits above its layout parent (a parent in the same tier and branch), so chains climb off their parent. Bridge perks (parents in two branches) sit in the gap between those two columns, one row above their higher parent. Column order keeps every bridge between neighbours (`colOrder()`; Cool comes out as Handguns · Stealth · Throwables, pending the owner's check).
+- Colours like the game: taken = yellow, available = white, locked = red (dashed outline, so it isn't colour alone). Pictures are recoloured with SVG filters (`#pk-taken/open/locked`: flood + composite with the picture's alpha). Bridges get a double outline. Planner markers (◆ + dashed yellow ring) show in Live.
 
 ## Journal rules
 

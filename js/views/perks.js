@@ -6,7 +6,7 @@ import { perk, attrMeta, attrVal, perkLevel, perkGate, budgets, dependents, addP
 import { $, esc, openSheet } from "../ui.js";
 import { renderAll } from "../app.js";
 
-export const UI = { perkAttr: "body", perkBranch: 0 };
+export const UI = { perkAttr: "body", perkBranch: 0, scrollX: {} };   // scrollX: sideways position per attribute, kept while the app is open
 /* In Live, the planner build shows through: its perk levels and attributes are the goal. */
 const goal = () => isLive() ? build() : null;
 const wantPerk = (g, b, id) => g ? Math.max(0, perkLevel(g, id) - perkLevel(b, id)) : 0;
@@ -18,34 +18,6 @@ function toGo(g, b) {
   const relic = Math.max(0, G.relicSpent - B.relicSpent);
   return { perks, attrs, relic, level: Math.max(0, G.lvl - B.lvl) };
 }
-const TREE_W = 360, NODE_CORE = 25, NODE_SAT = 19, ROW_H = 86, BAND_PAD = 8, LABEL_H = 26, MAX_PER_ROW = 3;
-function layoutBranch(attr, br, b){
-  const P = DATA.perks.filter(p=>p.attr===attr && p.br===br);
-  const tiers = attr==="relic" ? [...new Set(P.map(p=>p.tier))].sort((x,y)=>x-y) : DATA.progression.tiers;
-  const nodes=[], bands=[]; let y=0;
-  tiers.forEach(tier=>{
-    const inTier = P.filter(p=>p.tier===tier); if(!inTier.length) return;
-    const lp = p => reqsOf(p).find(r=>inTier.find(q=>q.id===r));   // layout parent: first parent in this tier
-    const roots = inTier.filter(p=>!lp(p));
-    const clusters = roots.map(r=>{
-      const rows=[[r]]; let frontier=[r];
-      for(;;){ const next=inTier.filter(p=>frontier.some(f=>f.id===lp(p))); if(!next.length) break; rows.push(next); frontier=next; }
-      const wrapped=[]; rows.forEach(row=>{ const chunks=Math.ceil(row.length/MAX_PER_ROW), size=Math.ceil(row.length/chunks); for(let i=0;i<row.length;i+=size) wrapped.push(row.slice(i,i+size)); });
-      return {rows:wrapped, w:Math.max(...wrapped.map(r=>r.length))};
-    });
-    const totalW = clusters.reduce((a,c)=>a+c.w,0);
-    const top=y; y+=LABEL_H+BAND_PAD; let x0=0, maxRows=0;
-    clusters.forEach(c=>{
-      const cwid = TREE_W*c.w/totalW;
-      c.rows.forEach((row,ri)=>row.forEach((p,i)=>nodes.push({p, x:x0+(i+0.5)*cwid/row.length, y:y+ri*ROW_H+NODE_CORE+2, r:p.core?NODE_CORE:NODE_SAT, row:ri, cx0:x0, cx1:x0+cwid})));
-      maxRows=Math.max(maxRows,c.rows.length); x0+=cwid;
-    });
-    y += maxRows*ROW_H + BAND_PAD; bands.push({tier, top, bottom:y});
-  });
-  // edges (including links back to a core in an earlier band, same branch)
-  const edges=[]; nodes.forEach(n=>{ reqsOf(n.p).forEach(r=>{ const par=nodes.find(m=>m.p.id===r); if(par) edges.push({from:par,to:n}); }); });
-  return {nodes, edges, bands, h:y};
-}
 function hexPath(x,y,r){ const pts=[]; for(let k=0;k<6;k++){ const a=Math.PI/6+k*Math.PI/3; pts.push((x+r*Math.cos(a)).toFixed(1)+","+(y+r*Math.sin(a)).toFixed(1)); } return "M"+pts.join("L")+"Z"; }
 function wrapLabel(s, max){ const words=s.split(" "); const lines=[]; let cur=""; words.forEach(w=>{ if((cur+" "+w).trim().length>max && cur){ lines.push(cur); cur=w; } else cur=(cur+" "+w).trim(); }); if(cur) lines.push(cur); if(lines.length>3){ lines[2]=lines.slice(2).join(" "); lines.length=3; if(lines[2].length>max+2) lines[2]=lines[2].slice(0,max)+"…"; } return lines; }
 
@@ -56,7 +28,8 @@ export function renderPerks(){
   const av = attr.relic ? null : attrVal(b,attr.id);
   const chips = DATA.attributes.map(a=>{ const up = g && !a.relic && attrVal(g,a.id)>attrVal(b,a.id);
     return `<button class="achip ${a.id===attr.id?"on":""}" data-pattr="${a.id}"><b>${a.short}</b><span class="num">${a.relic?B.relicSpent+"/"+B.relicTotal:attrVal(b,a.id)}${up?`<em class="goalv">◆${attrVal(g,a.id)}</em>`:""}</span></button>`; }).join("");
-  const branches = attr.branches.length>1 ? `<div class="seg wide">${attr.branches.map((n,i)=>`<button data-pbranch="${i}" class="${UI.perkBranch===i?"on":""}">${esc(n)}</button>`).join("")}</div>` : "";
+  const TR = renderTree(attr, b);   // all branches side by side; the tabs follow the one on screen
+  const branches = attr.branches.length>1 ? `<div class="seg wide" id="pTabs">${TR.L.order.map(i=>`<button data-pbranch="${i}" class="${UI.perkBranch===i?"on":""}" aria-pressed="${UI.perkBranch===i}">${esc(attr.branches[i])}</button>`).join("")}</div>` : "";
   const spent = B.byAttr[attr.id]||0;
   const tierMarks = attr.relic ? "" : `<div class="tiers">${P.tiers.map(t=>`<span class="${av>=t?"on":""}"><b>${t}</b>${P.tierNames[t]}</span>`).join("")}</div>`;
   const bad = c => c<0 ? ' style="color:var(--red)"' : '';
@@ -74,61 +47,140 @@ export function renderPerks(){
     ${tierMarks}`}
     ${branches}
   </div></div>
-  <div class="tree" id="tree">${renderTree(attr.id, UI.perkBranch, b)}</div>
-  <p class="hint">Tap a node for details and to add or remove points. Removing a core perk clears everything that hangs off it.${isLive()?" ◆ with a dashed ring = in your planner build, not taken yet.":""}</p>`;
+  <div class="tree" id="tree"><div class="treescroll" id="treeScroll">${TR.svg}</div></div>
+  <p class="hint">Swipe sideways to move between trees; the tabs follow. Yellow = taken, white = available, red (dashed) = locked. A double outline marks a perk that links two trees; it needs every perk it's connected to. Tap a perk for details and to add or remove points.${isLive()?" ◆ with a dashed ring = in your planner build, not taken yet.":""} Perk pictures: Cyberpunk Wiki / CD PROJEKT RED.</p>`;
+  hookScroll(attr, TR.L);
 }
-function renderTree(attr, br, b){
-  const L=layoutBranch(attr, br, b); const gb=goal(); const P=DATA.progression; const av=attr==="relic"?99:attrVal(b,attr);
-  let s=`<svg viewBox="0 0 ${TREE_W} ${L.h}" width="100%" style="display:block" font-family="inherit">`;
-  L.bands.forEach((bd,i)=>{
-    const locked = bd.tier>av && attr!=="relic";
-    s+=`<rect x="0" y="${bd.top}" width="${TREE_W}" height="${bd.bottom-bd.top}" fill="${i%2?"rgba(91,231,242,.025)":"transparent"}"/>`;
-    s+=`<line x1="0" y1="${bd.top+.5}" x2="${TREE_W}" y2="${bd.top+.5}" stroke="var(--line)"/>`;
-    const lbl = attr==="relic" ? (["","Emergency Cloaking","Vulnerability Analytics","Jailbreak"][bd.tier]||"") : `${P.tierNames[bd.tier]} · ${attr==="relic"?"":attrMeta(attr).short+" "}${bd.tier}`;
-    s+=`<text x="8" y="${bd.top+17}" font-size="11" font-weight="700" letter-spacing="1.2" fill="${locked?"var(--faint)":"var(--cyan)"}">${esc(lbl.toUpperCase())}${locked?"  ·  LOCKED":""}</text>`;
-    if(locked) s+=`<rect x="0" y="${bd.top}" width="${TREE_W}" height="${bd.bottom-bd.top}" fill="url(#hatch)" opacity=".5"/>`;
-  });
-  L.edges.forEach(e=>{
-    const pl=perkLevel(b,e.from.p.id), cl=perkLevel(b,e.to.p.id);
-    const col = cl?"var(--yellow)":pl?"var(--cyan)":"var(--line2)";
-    const y1=e.from.y+e.from.r, y2=e.to.y-e.to.r, ym=Math.min(e.from.y+e.from.r+LABEL_H+4, y2-6);
-    const sameBand = e.from.cx0===e.to.cx0 && e.to.row-e.from.row>1;
-    let d;
-    if(sameBand){ // wrapped row: run a bus down the cluster's outer edge so it can't be read as a link through the row above
-      const bx = e.to.x < (e.to.cx0+e.to.cx1)/2 ? e.to.cx0+6 : e.to.cx1-6;
-      d=`M${e.from.x},${y1} V${ym} H${bx} V${y2-8} H${e.to.x} V${y2}`;
-    } else d=`M${e.from.x},${y1} V${ym} H${e.to.x} V${y2}`;
-    s+=`<path d="${d}" fill="none" stroke="${col}" stroke-width="${cl?2:1.5}" ${cl||pl?"":'stroke-dasharray="3 3"'}/>`;
-  });
-  L.nodes.forEach(n=>{
-    const p=n.p, l=perkLevel(b,p.id), g=perkGate(b,p), maxed=l>=p.max;
-    const fill = l ? (maxed?"var(--yellow)":"rgba(245,230,13,.18)") : g.ok ? "var(--panel2)" : "var(--panel)";
-    const stroke = l ? "var(--yellow)" : g.ok ? "var(--cyan)" : "var(--faint)";
-    const txt = l ? (maxed?"#111":"var(--yellow)") : g.ok ? "var(--text)" : "var(--faint)";
-    const want=wantPerk(gb,b,p.id);
-    s+=`<g class="node" data-perk="${p.id}" role="button" tabindex="0" aria-label="${esc(p.name)}, ${l}/${p.max}${want?`, planner wants ${perkLevel(gb,p.id)}`:""}">`;
-    if(want){ // planner build has this (or more levels): dashed yellow ring + a diamond marker
-      s+=`<path d="${hexPath(n.x,n.y,n.r+6)}" fill="none" stroke="var(--yellow)" stroke-width="1.4" stroke-dasharray="3 3"/>`;
-      const dx=n.x+n.r*.95, dy=n.y-n.r*.95; s+=`<path d="M${dx},${dy-6}L${dx+6},${dy}L${dx},${dy+6}L${dx-6},${dy}Z" fill="var(--yellow)" stroke="var(--panel)" stroke-width="1.5"/>`;
-    }
-    s+=`<path d="${hexPath(n.x,n.y,n.r+3)}" fill="none" stroke="${stroke}" stroke-opacity=".35" stroke-width="1"/>`;
-    s+=`<path d="${hexPath(n.x,n.y,n.r)}" fill="${fill}" stroke="${stroke}" stroke-width="${p.core?2.2:1.6}" ${g.ok||l?"":'stroke-dasharray="4 3"'}/>`;
-    if(p.max>1) s+=`<text x="${n.x}" y="${n.y+5}" text-anchor="middle" font-size="${p.core?14:12}" font-weight="700" fill="${txt}">${l}/${p.max}</text>`;
-    else if(p.cost) s+=`<text x="${n.x}" y="${n.y+5}" text-anchor="middle" font-size="12" font-weight="700" fill="${txt}">${l?"✓":p.cost}</text>`;
-    else s+=`<text x="${n.x}" y="${n.y+5}" text-anchor="middle" font-size="13" font-weight="700" fill="${txt}">${l?"✓":""}</text>`;
-    const lines=wrapLabel(p.name, p.core?17:15);
-    lines.forEach((ln,i)=>{ s+=`<text x="${n.x}" y="${n.y+n.r+12+i*11}" text-anchor="middle" font-size="10.5" font-weight="${l?700:600}" paint-order="stroke" stroke="var(--panel)" stroke-width="3" stroke-linejoin="round" fill="${l?"var(--yellow)":g.ok?"var(--text)":"var(--faint)"}">${esc(ln)}</text>`; });
-    s+=`</g>`;
-  });
-  s+=`<defs><pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#1a2a32" stroke-width="2"/></pattern></defs></svg>`;
-  return s;
+/* Keep the tabs in step with the tree on screen, and remember where the tree was scrolled. */
+let TREE = null;
+function hookScroll(attr, L) {
+  const el = $("#treeScroll"); if (!el) return; TREE = { attr: attr.id, L };
+  el.scrollLeft = UI.scrollX[attr.id] ?? branchScrollX(L, UI.perkBranch, el.clientWidth);
+  const onScroll = () => {
+    UI.scrollX[attr.id] = el.scrollLeft;
+    const mid = el.scrollLeft + el.clientWidth / 2;
+    const c = L.order.reduce((best, k) => Math.abs(L.colX[k] + L.colW[k] / 2 - mid) < Math.abs(L.colX[best] + L.colW[best] / 2 - mid) ? k : best, L.order[0]);
+    if (c !== UI.perkBranch) { UI.perkBranch = c; document.querySelectorAll("#pTabs button").forEach(bt => { const on = +bt.dataset.pbranch === c; bt.classList.toggle("on", on); bt.setAttribute("aria-pressed", on); }); }
+  };
+  el.addEventListener("scroll", onScroll, { passive: true });
 }
+function scrollToBranch(c) {
+  const el = $("#treeScroll"); if (!el || !TREE) return;
+  el.scrollTo({ left: branchScrollX(TREE.L, c, el.clientWidth), behavior: "smooth" });
+}
+/* ---------- the tree: every branch of an attribute side by side, tiers from the bottom up ----------
+   Like the game: the lowest tier sits at the bottom and Legend (20) at the top. Each branch is a
+   column; bridge perks (parents in two branches) sit in the gap between their two columns. Inside a
+   tier, perks are laid out as a small tree: a perk sits above the one it hangs off, so chained perks
+   (Counter-A-Hack → Copy-Paste) climb off their parent instead of joining the main row.
+   Columns are ordered so every bridge links neighbours (Cool: Stealth goes in the middle). */
+const COL_MIN = 330, UNIT = 92, ROW_H = 96, GUT = 96, BAND_LBL = 26, BAND_PAD = 12, HEAD_H = 30, R_CORE = 24, R_SAT = 20, LBL_SPACE = 30;
+const ICON = "https://static.wikia.nocookie.net/cyberpunk/images/";
+export const perkIconUrl = p => p.icon ? `${ICON}${p.icon}/revision/latest/scale-to-width-down/100` : null;
+const COL = { taken: "#f5e60d", open: "#eef6f7", locked: "#ff3d5e" };   // in-game: selected yellow, available white, locked red
+
+const parentsOf = p => reqsOf(p).map(perk).filter(Boolean);
+const bridgeCols = p => { const bs = [...new Set(parentsOf(p).filter(q => q.attr === p.attr).map(q => q.br))]; return bs.length > 1 ? bs : null; };
+/* Branch order left to right: keep the data order unless a bridge would link non-neighbours. */
+function colOrder(attr) {
+  const n = attr.branches.length; const base = [...Array(n).keys()];
+  if (n < 3) return base;
+  const links = DATA.perks.filter(p => p.attr === attr.id).flatMap(p => { const bs = bridgeCols(p); if (bs) return [bs]; const q = parentsOf(p)[0]; return q && q.attr === p.attr && q.br !== p.br ? [[q.br, p.br]] : []; });
+  const bad = ord => links.filter(([a, c]) => Math.abs(ord.indexOf(a) - ord.indexOf(c)) > 1).length;
+  const perms = [[0, 1, 2], [1, 0, 2], [0, 2, 1], [1, 2, 0], [2, 0, 1], [2, 1, 0]];
+  return perms.reduce((best, o) => bad(o) < bad(best) ? o : best, base);
+}
+function layoutAttr(attr) {
+  const P = DATA.perks.filter(p => p.attr === attr.id);
+  const tiers = [...new Set(P.map(p => p.tier))].sort((x, y) => x - y);
+  const order = colOrder(attr);
+  const inCol = (p, c) => !bridgeCols(p) && p.br === c;
+  // per tier and column: a small forest (layout parent = a parent in the same tier and column)
+  const lp = p => parentsOf(p).find(q => q.tier === p.tier && q.br === p.br && q.attr === p.attr && !bridgeCols(q));
+  const kids = new Map(); P.forEach(p => { const q = !bridgeCols(p) && lp(p); if (q) { if (!kids.has(q.id)) kids.set(q.id, []); kids.get(q.id).push(p); } });
+  const width = p => Math.max(1, (kids.get(p.id) || []).reduce((a, k) => a + width(k), 0));
+  const depth = {}; const setDepth = (p, d) => { depth[p.id] = d; (kids.get(p.id) || []).forEach(k => setDepth(k, d + 1)); };
+  const forest = {};   // forest[tier][col] = roots
+  tiers.forEach(t => { forest[t] = {}; order.forEach(c => { const roots = P.filter(p => p.tier === t && inCol(p, c) && !lp(p)); roots.forEach(r => setDepth(r, 0)); forest[t][c] = roots; }); });
+  // bridges: one row above the higher parent when it's in the same tier, else the bottom row
+  P.filter(bridgeCols).forEach(p => { const ds = parentsOf(p).filter(q => q.tier === p.tier).map(q => depth[q.id] ?? 0); depth[p.id] = ds.length ? Math.max(...ds) + 1 : 0; });
+  // column widths and x offsets
+  const colW = {}; order.forEach(c => { colW[c] = Math.max(COL_MIN, ...tiers.map(t => forest[t][c].reduce((a, r) => a + width(r), 0) * UNIT + 24)); });
+  const colX = {}; let x = 0; order.forEach((c, i) => { colX[c] = x; x += colW[c] + (i < order.length - 1 ? GUT : 0); });
+  const W = x;
+  // bands from the top (highest tier) down
+  const rows = t => Math.max(1, ...P.filter(p => p.tier === t).map(p => (depth[p.id] ?? 0) + 1));
+  const bands = []; let y = HEAD_H;
+  [...tiers].reverse().forEach(t => { const h = BAND_LBL + rows(t) * ROW_H + BAND_PAD; bands.push({ tier: t, top: y, bottom: y + h }); y += h; });
+  const H = y;
+  const pos = {};
+  const rowY = (t, d) => { const bd = bands.find(z => z.tier === t); return bd.bottom - BAND_PAD - LBL_SPACE - R_CORE - d * ROW_H; };
+  tiers.forEach(t => order.forEach(c => {
+    const roots = forest[t][c]; const total = roots.reduce((a, r) => a + width(r), 0);
+    let u = (colW[c] / UNIT - total) / 2;   // center the tier's forest in its column
+    const place = (p, u0) => { const w = width(p); pos[p.id] = { x: colX[c] + (u0 + w / 2) * UNIT, y: rowY(t, depth[p.id]) }; let k0 = u0; (kids.get(p.id) || []).forEach(k => { place(k, k0); k0 += width(k); }); };
+    roots.forEach(r => { place(r, u); u += width(r); });
+  }));
+  P.filter(bridgeCols).forEach(p => {
+    const [a, c] = bridgeCols(p).sort((m, n) => order.indexOf(m) - order.indexOf(n));
+    const adj = Math.abs(order.indexOf(a) - order.indexOf(c)) === 1;
+    const bx = adj ? colX[c] - GUT / 2 : parentsOf(p).reduce((s, q) => s + (pos[q.id] ? pos[q.id].x : 0), 0) / parentsOf(p).length;
+    pos[p.id] = { x: bx, y: rowY(p.tier, depth[p.id]) };
+  });
+  return { P, order, colX, colW, W, H, bands, pos };
+}
+export function branchScrollX(L, c, viewW) { return Math.max(0, L.colX[c] - Math.max(0, (viewW - L.colW[c]) / 2)); }
+
+function renderTree(attr, b) {
+  const L = layoutAttr(attr); const Pr = DATA.progression; const gb = goal();
+  const av = attr.relic ? 99 : attrVal(b, attr.id);
+  let s = `<svg width="${L.W}" height="${L.H}" viewBox="0 0 ${L.W} ${L.H}" style="display:block" font-family="inherit">
+    <defs>${Object.entries(COL).map(([k, c]) => `<filter id="pk-${k}" x="0" y="0" width="1" height="1"><feFlood flood-color="${c}"/><feComposite in2="SourceAlpha" operator="in"/></filter>`).join("")}
+    <pattern id="hatch" width="6" height="6" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><line x1="0" y1="0" x2="0" y2="6" stroke="#1a2a32" stroke-width="2"/></pattern></defs>`;
+  // column headers and gutters
+  L.order.forEach(c => { s += `<text x="${L.colX[c] + L.colW[c] / 2}" y="20" text-anchor="middle" font-size="12" font-weight="700" letter-spacing="1.4" fill="var(--cyan)">${esc(attr.branches[c].toUpperCase())}</text>`; });
+  L.order.slice(1).forEach(c => { s += `<rect x="${L.colX[c] - GUT}" y="${HEAD_H}" width="${GUT}" height="${L.H - HEAD_H}" fill="rgba(245,230,13,.025)"/>`; });
+  // tier bands
+  L.bands.forEach((bd, i) => {
+    const locked = !attr.relic && bd.tier > av;
+    s += `<rect x="0" y="${bd.top}" width="${L.W}" height="${bd.bottom - bd.top}" fill="${i % 2 ? "rgba(91,231,242,.025)" : "transparent"}"/><line x1="0" y1="${bd.top + .5}" x2="${L.W}" y2="${bd.top + .5}" stroke="var(--line)"/>`;
+    const lbl = attr.relic ? (["", "Emergency Cloaking", "Vulnerability Analytics", "Jailbreak"][bd.tier] || "") : `${Pr.tierNames[bd.tier]} · ${attr.short} ${bd.tier}`;
+    L.order.forEach(c => { s += `<text x="${L.colX[c] + 8}" y="${bd.top + 18}" font-size="11" font-weight="700" letter-spacing="1.2" fill="${locked ? "var(--red)" : "var(--cyan)"}">${esc(lbl.toUpperCase())}${locked ? "  ·  LOCKED" : ""}</text>`; });
+    if (locked) s += `<rect x="0" y="${bd.top}" width="${L.W}" height="${bd.bottom - bd.top}" fill="url(#hatch)" opacity=".45"/>`;
+  });
+  // links: up from the parent, across, up into the child (drawn first, under the nodes)
+  L.P.forEach(p => parentsOf(p).forEach(q => {
+    const a = L.pos[q.id], z = L.pos[p.id]; if (!a || !z) return;
+    const pl = perkLevel(b, q.id), cl = perkLevel(b, p.id);
+    const col = cl ? "var(--yellow)" : pl ? "var(--text)" : "var(--line2)";
+    const ym = Math.min(a.y - R_SAT - 6, z.y + R_CORE + LBL_SPACE);
+    s += `<path d="M${a.x},${a.y} V${ym} H${z.x} V${z.y}" fill="none" stroke="${col}" stroke-width="${cl ? 2.2 : 1.6}" ${cl || pl ? "" : 'stroke-dasharray="3 3"'}/>`;
+  }));
+  // nodes
+  L.P.forEach(p => {
+    const n = L.pos[p.id]; if (!n) return;
+    const r = p.core ? R_CORE : R_SAT, l = perkLevel(b, p.id), g = perkGate(b, p), maxed = l >= p.max;
+    const st = l ? "taken" : g.ok ? "open" : "locked"; const c = COL[st];
+    const want = wantPerk(gb, b, p.id); const url = perkIconUrl(p); const br = bridgeCols(p);
+    s += `<g class="node" data-perk="${p.id}" role="button" tabindex="0" aria-label="${esc(p.name)}, ${l}/${p.max}, ${st === "taken" ? "taken" : st === "open" ? "available" : "locked"}${br ? ", links two trees" : ""}${want ? `, planner wants ${perkLevel(gb, p.id)}` : ""}">`;
+    if (want) { s += `<path d="${hexPath(n.x, n.y, r + 7)}" fill="none" stroke="var(--yellow)" stroke-width="1.4" stroke-dasharray="3 3"/>`; const dx = n.x + r * .95, dy = n.y - r * .95; s += `<path d="M${dx},${dy - 6}L${dx + 6},${dy}L${dx},${dy + 6}L${dx - 6},${dy}Z" fill="var(--yellow)" stroke="var(--panel)" stroke-width="1.5"/>`; }
+    if (br) s += `<path d="${hexPath(n.x, n.y, r + 4)}" fill="none" stroke="${c}" stroke-opacity=".55" stroke-width="1.2"/>`;   // double outline marks a bridge
+    s += `<path d="${hexPath(n.x, n.y, r)}" fill="${st === "taken" ? "rgba(245,230,13,.16)" : "#081015"}" stroke="${c}" stroke-width="${p.core ? 2.4 : 1.8}" ${st === "locked" ? 'stroke-dasharray="4 3"' : ""}/>`;
+    if (url) s += `<image href="${esc(url)}" x="${n.x - r * .72}" y="${n.y - r * .72}" width="${r * 1.44}" height="${r * 1.44}" filter="url(#pk-${st})" preserveAspectRatio="xMidYMid meet"/>`;
+    if (p.max > 1 || p.cost) { const t = p.max > 1 ? `${l}/${p.max}` : l ? "✓" : `${p.cost} pt`; s += `<text x="${n.x + r + 5}" y="${n.y + 4}" font-size="11.5" font-weight="700" paint-order="stroke" stroke="var(--panel)" stroke-width="3" fill="${c}">${t}</text>`; }
+    wrapLabel(p.name, 13).forEach((ln, i) => { s += `<text x="${n.x}" y="${n.y + r + 13 + i * 11}" text-anchor="middle" font-size="10.5" font-weight="${l ? 700 : 600}" paint-order="stroke" stroke="var(--panel)" stroke-width="3" stroke-linejoin="round" fill="${c}">${esc(ln)}</text>`; });
+    s += `</g>`;
+  });
+  return { svg: s + `</svg>`, L };
+}
+
 function openPerk(id){
   const b=current(); const p=perk(id); const l=perkLevel(b,id); const g=perkGate(b,p); const a=attrMeta(p.attr); const gb=goal(); const gl=gb?perkLevel(gb,id):0;
   const deps = l===1 ? dependents(id).filter(d=>perkLevel(b,d)>0) : [];
   const lvls = p.lv.map((t,i)=>`<div class="lvl ${i<l?"on":""}"><span class="num">${p.max>1?`Lv ${i+1}`:(p.cost?`${p.cost} pt`:"")}</span><span>${esc(t)}</span></div>`).join("");
   openSheet(a.name + (a.relic?"":" · "+DATA.progression.tierNames[p.tier]+" "+p.tier), `
     <div class="detail">
+      ${perkIconUrl(p)?`<img class="perkic" src="${esc(perkIconUrl(p))}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">`:""}
       <div class="name">${esc(p.name)}</div>
       <div class="line"><span>${p.core?"Core perk":"Perk"} · ${p.max>1?`${p.max} levels`:"1 level"}${p.cost?` · ${p.cost} Relic pt${p.cost>1?"s":""}`:""}</span>${p.only?`<span>· only ${esc(p.only)}</span>`:""}</div>
       ${reqsOf(p).map(r=>`<div class="${perkLevel(b,r)?"okbox":"warnbox"}" style="margin-top:0">Requires ${esc(perk(r).name)}${perk(r).attr!==p.attr||perk(r).br!==p.br?` <small>(${esc(attrMeta(perk(r).attr).name)}${perk(r).attr===p.attr?", other branch":""})</small>`:""}${perkLevel(b,r)?" ✓":""}</div>`).join("")}
@@ -145,8 +197,8 @@ function openPerk(id){
 /* ---------- events ---------- */
 export function click(t, b) {
   const ds = t.dataset;
-  if (ds.pattr) { UI.perkAttr = ds.pattr; UI.perkBranch = 0; renderPerks(); return true; }
-  if (ds.pbranch !== undefined) { UI.perkBranch = +ds.pbranch; renderPerks(); return true; }
+  if (ds.pattr) { UI.perkAttr = ds.pattr; if (UI.scrollX[ds.pattr] === undefined) UI.perkBranch = 0; renderPerks(); return true; }
+  if (ds.pbranch !== undefined) { scrollToBranch(+ds.pbranch); return true; }
   if (ds.perk) { openPerk(ds.perk); return true; }
   if (ds.padd) { if (addPerkPoint(b, ds.padd)) { save(); openPerk(ds.padd); renderAll(); } return true; }
   if (ds.prem) { if (removePerkPoint(b, ds.prem)) { fixPerkSlots(b); save(); openPerk(ds.prem); renderAll(); } return true; }

@@ -1,7 +1,7 @@
 /* Service worker: keeps Chromedeck working offline.
    Bump CACHE on every release (match APP_VERSION in js/app.js) and add any new
    file to APP_FILES, or installed copies keep serving the old version. */
-const CACHE = "chromedeck-0.13.0";
+const CACHE = "chromedeck-0.14.0";
 const FONTS = "chromedeck-fonts";
 const IMAGES = "chromedeck-images-2";   // wiki images, cached as they're viewed (-2: drops broken copies cached by 0.9.0 and earlier)
 const APP_FILES = [
@@ -46,6 +46,7 @@ async function wikiImage(req) {
   // give up after 15 s so a weak signal shows the "unavailable" placeholder instead of hanging
   const ctl = new AbortController(); const t = setTimeout(() => ctl.abort(), 15000);
   const r = await fetch(req.url, { mode: "cors", credentials: "omit", referrerPolicy: "no-referrer", signal: ctl.signal }).finally(() => clearTimeout(t));
-  if (r.ok) cache.put(req.url, r.clone());
+  if (!r.ok) return Response.error();   // the wiki sends a small "not found" picture with errors; fail cleanly instead of showing it
+  cache.put(req.url, r.clone());
   return r;
 }

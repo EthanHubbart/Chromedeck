@@ -408,3 +408,10 @@ select.sel{background:var(--panel2);border:1px solid var(--line2);color:var(--te
 .achip .goalv{display:block;font-style:normal;font-size:10.5px;color:var(--yellow);line-height:1}
 .st.goalst{color:var(--yellow)}
 .warnbox.goalbox{border-color:var(--yellow);color:var(--yellow);background:rgba(245,230,13,.05)}
+
+/* ---------- perk tree: all branches side by side, scroll sideways ---------- */
+.treescroll{overflow-x:auto;overflow-y:hidden;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:var(--cyan-dim) transparent}
+.treescroll::-webkit-scrollbar{height:6px}
+.treescroll::-webkit-scrollbar-thumb{background:var(--cyan-dim)}
+.tree .node:focus-visible path{stroke-width:3.2}
+.detail .perkic{width:72px;height:72px;display:block;margin:0 0 6px;background:#081015;border:1px solid var(--line2);padding:6px}
