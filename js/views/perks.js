@@ -72,7 +72,7 @@ function scrollToBranch(c) {
    Every perk sits at its position on the official CD PROJEKT RED build planner (x, y in
    data/perks.js), scaled down: Rookie at the bottom, Legend across the top, the three trees
    side by side and bridge perks between them. The tabs follow the part of the canvas on screen. */
-const SCALE = .46, PAD_X = 64, HEAD_H = 34, PAD_TOP = 62, PAD_BOT = 72, R_CORE = 24, R_SAT = 20;
+const SCALE = .46, PAD_X = 64, HEAD_H = 34, PAD_TOP = 62, PAD_BOT = 84, R_CORE = 24, R_SAT = 20;
 const ICON = "https://static.wikia.nocookie.net/cyberpunk/images/";
 export const perkIconUrl = p => p.icon ? `${ICON}${p.icon}/revision/latest/scale-to-width-down/100` : null;
 const COL = { taken: "#f5e60d", open: "#eef6f7", locked: "#ff3d5e" };   // in-game: selected yellow, available white, locked red
@@ -82,7 +82,12 @@ const bridgeCols = p => { const bs = [...new Set(parentsOf(p).filter(q => q.attr
 function layoutAttr(attr) {
   const P = DATA.perks.filter(p => p.attr === attr.id && p.x !== undefined);
   const minX = Math.min(...P.map(p => p.x)), maxX = Math.max(...P.map(p => p.x)), minY = Math.min(...P.map(p => p.y)), maxY = Math.max(...P.map(p => p.y));
-  const pos = {}; P.forEach(p => { pos[p.id] = { x: PAD_X + (p.x - minX) * SCALE, y: HEAD_H + PAD_TOP + (p.y - minY) * SCALE }; });
+  // straighten: perks nearly in one column share its x; perks of one tier nearly in one row share its y
+  const snap = (vals, gap) => { const m = new Map(); let grp = []; const flush = () => { const avg = grp.reduce((a, v) => a + v, 0) / grp.length; grp.forEach(v => m.set(v, avg)); grp = []; };
+    [...new Set(vals)].sort((a, b2) => a - b2).forEach(v => { if (grp.length && v - grp[grp.length - 1] > gap) flush(); grp.push(v); }); if (grp.length) flush(); return m; };
+  const sx = snap(P.map(p => p.x), 70);
+  const sy = {}; [...new Set(P.map(p => p.tier))].forEach(t => { const m = snap(P.filter(p => p.tier === t).map(p => p.y), 50); P.filter(p => p.tier === t).forEach(p => { sy[p.id] = m.get(p.y); }); });
+  const pos = {}; P.forEach(p => { pos[p.id] = { x: PAD_X + (sx.get(p.x) - minX) * SCALE, y: HEAD_H + PAD_TOP + (sy[p.id] - minY) * SCALE }; });
   const W = Math.round(PAD_X * 2 + (maxX - minX) * SCALE), H = Math.round(HEAD_H + PAD_TOP + (maxY - minY) * SCALE + PAD_BOT);
   // tier bands: boundaries halfway between one tier's lowest perk and the next tier's highest
   const tiers = [...new Set(P.map(p => p.tier))].sort((m, n) => n - m);   // top (highest) first
@@ -96,6 +101,24 @@ function layoutAttr(attr) {
   const order = attr.branches.map((_, c) => c).sort((m, n) => cx[m] - cx[n]);
   return { P, order, cx, x0, W, H, bands, pos };
 }
+/* Candidate circuit traces from a to z, best first: straight when aligned; otherwise a straight run,
+   a 45° diagonal, and a straight run (diagonal in the middle, at the start, or at the end); last
+   resort, under the row. */
+function traceRoutes(a, z) {
+  const dx = z.x - a.x, dy = z.y - a.y, ax = Math.abs(dx), ay = Math.abs(dy), sx = Math.sign(dx), sy = Math.sign(dy);
+  if (ax < 1 || ay < 1) return [[a, z], underRow(a, z)];
+  const P = (x, y) => ({ x, y });
+  const out = [];
+  if (ay >= ax) { const r = ay - ax;   // mostly vertical: vertical runs + one diagonal
+    out.push([a, P(a.x, a.y + sy * r / 2), P(z.x, z.y - sy * r / 2), z], [a, P(z.x, a.y + sy * ax), z], [a, P(a.x, a.y + sy * r), z]);
+  } else { const r = ax - ay;          // mostly horizontal: horizontal runs + one diagonal
+    out.push([a, P(a.x + sx * r / 2, a.y), P(z.x - sx * r / 2, z.y), z], [a, P(a.x + sx * ay, z.y), z], [a, P(a.x + sx * r, a.y), z]);
+  }
+  out.push(underRow(a, z));
+  return out;
+}
+/* under the row, below the perk names (the space above is where links from lower tiers arrive) */
+function underRow(a, z) { const y = Math.max(a.y, z.y) + R_CORE + 50; return [a, { x: a.x, y }, { x: z.x, y }, z]; }
 /* distance from point o to the segment a–z */
 function segDist(o, a, z) { const dx = z.x - a.x, dy = z.y - a.y, t = Math.max(0, Math.min(1, ((o.x - a.x) * dx + (o.y - a.y) * dy) / (dx * dx + dy * dy || 1))); return Math.hypot(a.x + t * dx - o.x, a.y + t * dy - o.y); }
 export function branchScrollX(L, c, viewW) { return Math.max(0, L.cx[c] - viewW / 2); }
@@ -114,18 +137,19 @@ function renderTree(attr, b) {
     s += `<rect x="0" y="${bd.top}" width="${L.W}" height="${bd.bottom - bd.top}" fill="${i % 2 ? "rgba(91,231,242,.025)" : "transparent"}"/><line x1="0" y1="${bd.top + .5}" x2="${L.W}" y2="${bd.top + .5}" stroke="var(--line)"/>`;
     const lbl = attr.relic ? (["", "Emergency Cloaking", "Vulnerability Analytics", "Jailbreak"][bd.tier] || "") : `${Pr.tierNames[bd.tier]} · ${attr.short} ${bd.tier}`;
     // repeat the tier label where each tab's view starts on a phone, so it's always on screen
-    [...new Set([8, ...L.order.map(c => Math.round(branchScrollX(L, c, 366)) + 8)])].forEach(tx => { s += `<text x="${tx}" y="${bd.top + 18}" font-size="11" font-weight="700" letter-spacing="1.2" fill="${locked ? "var(--red)" : "var(--cyan)"}">${esc(lbl.toUpperCase())}${locked ? "  ·  LOCKED" : ""}</text>`; });
+    [8, ...L.order.map(c => Math.round(branchScrollX(L, c, 366)) + 8)].filter((v, i, a) => a.findIndex(w => Math.abs(w - v) < 200) === i).forEach(tx => { s += `<text x="${tx}" y="${bd.top + 18}" font-size="11" font-weight="700" letter-spacing="1.2" fill="${locked ? "var(--red)" : "var(--cyan)"}">${esc(lbl.toUpperCase())}${locked ? "  ·  LOCKED" : ""}</text>`; });
     if (locked) s += `<rect x="0" y="${bd.top}" width="${L.W}" height="${bd.bottom - bd.top}" fill="url(#hatch)" opacity=".45"/>`;
   });
-  // links: straight from each parent to the perk, like the game (drawn first, under the nodes)
+  // links as circuit traces: straight runs with 45° bends and a via dot at each bend (drawn under the nodes)
   L.P.forEach(p => parentsOf(p).forEach(q => {
     const a = L.pos[q.id], z = L.pos[p.id]; if (!a || !z) return;
     const pl = perkLevel(b, q.id), cl = perkLevel(b, p.id);
     const col = cl ? "var(--yellow)" : pl ? "var(--text)" : "var(--line2)";
-    // a straight line that would run through another perk bends over the row instead
-    const hits = L.P.some(o => o !== p && o !== q && L.pos[o.id] && segDist(L.pos[o.id], a, z) < R_CORE + 2);
-    const d = hits ? `M${a.x},${a.y} V${Math.min(a.y, z.y) - R_CORE - 12} H${z.x} V${z.y}` : `M${a.x},${a.y} L${z.x},${z.y}`;
-    s += `<path d="${d}" fill="none" stroke="${col}" stroke-width="${cl ? 2.4 : 1.6}" ${cl || pl ? "" : 'stroke-dasharray="4 4"'}/>`;
+    const others = L.P.filter(o => o !== p && o !== q && L.pos[o.id]).map(o => L.pos[o.id]);
+    const clear = pts => !others.some(o => pts.slice(1).some((pt, i) => segDist(o, pts[i], pt) < R_CORE + 3));
+    const pts = traceRoutes(a, z).find(clear) || traceRoutes(a, z)[0];
+    s += `<path d="M${pts.map(pt => `${pt.x.toFixed(1)},${pt.y.toFixed(1)}`).join(" L")}" fill="none" stroke="${col}" stroke-width="${cl ? 2.4 : 1.6}" stroke-linejoin="round" ${cl || pl ? "" : 'stroke-dasharray="4 4"'}/>`;
+    pts.slice(1, -1).forEach(pt => { s += `<circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="${cl ? 3 : 2.4}" fill="${col}"/>`; });
   }));
   // nodes
   L.P.forEach(p => {
