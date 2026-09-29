@@ -19,7 +19,7 @@ import * as overview from "./views/overview.js";
 import * as saves from "./views/saves.js";
 import * as wardrobe from "./views/wardrobe.js";
 
-export const APP_VERSION = "0.14.1";   // keep in step with CACHE in sw.js
+export const APP_VERSION = "0.14.2";   // keep in step with CACHE in sw.js
 
 /* ---------- navigation ---------- */
 /* Bottom tabs, left to right. A tab with `subs` shows sub-tabs across the top
